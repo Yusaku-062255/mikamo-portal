@@ -122,16 +122,47 @@ const Dashboard = () => {
             <h1 className="text-xl font-bold">
               {getGreeting()}、{user?.full_name}さん！🍵
             </h1>
-            <p className="text-sm opacity-90 mt-1">
-              {format(new Date(), 'yyyy年M月d日(E)', { locale: ja })}
-            </p>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-sm opacity-90">
+                {format(new Date(), 'yyyy年M月d日(E)', { locale: ja })}
+              </p>
+              {user?.department_name && (
+                <>
+                  <span className="text-sm opacity-70">|</span>
+                  <p className="text-sm opacity-90">
+                    {user.department_name}
+                  </p>
+                </>
+              )}
+              {user?.role && (
+                <>
+                  <span className="text-sm opacity-70">|</span>
+                  <p className="text-sm opacity-90">
+                    {user.role === 'staff' ? 'スタッフ' :
+                     user.role === 'manager' ? 'マネージャー' :
+                     user.role === 'head' ? '経営本陣' :
+                     user.role === 'admin' ? '管理者' : user.role}
+                  </p>
+                </>
+              )}
+            </div>
           </div>
-          <button
-            onClick={logout}
-            className="text-sm px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors"
-          >
-            ログアウト
-          </button>
+          <div className="flex items-center gap-2">
+            {user?.role === 'admin' && (
+              <button
+                onClick={() => navigate('/admin/users')}
+                className="text-sm px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors"
+              >
+                ユーザー管理
+              </button>
+            )}
+            <button
+              onClick={logout}
+              className="text-sm px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors"
+            >
+              ログアウト
+            </button>
+          </div>
         </div>
       </header>
 

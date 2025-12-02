@@ -91,3 +91,53 @@ def require_department(*allowed_codes: str):
     
     return check_department
 
+
+def require_role(*allowed_roles: str):
+    """
+    ロールによる権限チェックデコレータ
+    
+    使用例:
+    - @router.get("/", dependencies=[Depends(require_role("admin"))])
+    - @router.get("/", dependencies=[Depends(require_role("manager", "head", "admin"))])
+    
+    ロールの種類:
+    - staff: 一般従業員（自分に関係する情報のみ）
+    - manager: 部門責任者（自分の部門全体を見られる）
+    - head: 経営本陣（全部門を横断して見られる）
+    - admin: システム管理者（全機能にアクセス可能）
+    """
+    async def check_role(
+        current_user: User = Depends(get_current_user)
+    ) -> User:
+        if current_user.role not in allowed_roles:
+            role_names = {
+                "staff": "スタッフ",
+                "manager": "マネージャー",
+                "head": "経営本陣",
+                "admin": "管理者"
+            }
+            allowed_names = [role_names.get(r, r) for r in allowed_roles]
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"この操作には {', '.join(allowed_names)} の権限が必要です"
+            )
+        return current_user
+    
+    return check_role
+
+
+# よく使う権限チェックのショートカット
+def require_admin():
+    """管理者のみアクセス可能"""
+    return require_role("admin")
+
+
+def require_manager_or_head():
+    """マネージャーまたは経営本陣のみアクセス可能"""
+    return require_role("manager", "head", "admin")
+
+
+def require_head_or_admin():
+    """経営本陣または管理者のみアクセス可能"""
+    return require_role("head", "admin")
+

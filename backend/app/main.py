@@ -12,7 +12,8 @@ from app.core.middleware import (
     http_exception_handler,
     validation_exception_handler
 )
-from app.api import auth, daily_logs, tasks, ai_chat
+from app.api import auth, daily_logs, tasks, ai_chat, admin
+from app.core.init_db import init_database
 
 # ロギングを初期化
 setup_logging()
@@ -45,12 +46,17 @@ app.include_router(auth.router, prefix="/api/auth", tags=["認証"])
 app.include_router(daily_logs.router, prefix="/api/daily-logs", tags=["日次ログ"])
 app.include_router(tasks.router, prefix="/api/tasks", tags=["タスク"])
 app.include_router(ai_chat.router, prefix="/api/ai", tags=["AI相談"])
+app.include_router(admin.router, prefix="/api/admin", tags=["管理者"])
 
 
 @app.on_event("startup")
 async def on_startup():
     """
-    アプリ起動時にデータベーステーブルを自動作成
+    アプリ起動時にデータベーステーブルを自動作成し、初期データを投入
+    
+    【処理順序】
+    1. SQLModel.metadata.create_all() でテーブルを自動作成
+    2. init_database() で部門と初期管理者ユーザーを自動作成
     
     【重要】本番環境（Cloud Run）では、Alembicマイグレーションをスキップし、
     代わりにこの処理でテーブルを自動作成します。
@@ -61,13 +67,20 @@ async def on_startup():
     - 空のDBでも必要な全テーブルが作成され、アプリが正常に起動する
     """
     try:
-        # すべてのSQLModelテーブルを自動作成
+        # 1. すべてのSQLModelテーブルを自動作成
         # 既に存在するテーブルはスキップされ、存在しないテーブルのみ作成される
         SQLModel.metadata.create_all(engine)
         print("✅ データベーステーブルの自動作成が完了しました")
+        
+        # 2. 部門と初期管理者ユーザーを自動作成
+        # init_database() 内で以下を実行:
+        # - 5つの事業部門（ミカモ喫茶、カーコーティング、中古車販売、ミカモ石油、経営本陣）を作成
+        # - 環境変数から初期管理者ユーザーを作成（INITIAL_ADMIN_EMAIL 等が設定されている場合）
+        init_database()
+        
     except Exception as e:
         # テーブル作成に失敗してもアプリは起動を継続（ログで確認可能）
-        print(f"⚠️  データベーステーブルの自動作成でエラーが発生しました: {e}")
+        print(f"⚠️  データベース初期化でエラーが発生しました: {e}")
         print("   アプリケーションは起動しますが、DB接続エラーが発生する可能性があります")
 
 

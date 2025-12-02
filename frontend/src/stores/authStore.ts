@@ -6,6 +6,8 @@ interface User {
   email: string
   full_name: string
   department_id: number
+  department_name?: string
+  department_code?: string
   role: string
   is_active: boolean
 }

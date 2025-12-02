@@ -53,6 +53,12 @@ class Settings(BaseSettings):
     # OpenAI API
     OPENAI_API_KEY: Optional[str] = None
     OPENAI_MODEL: str = "gpt-4o-mini"  # GPT-4o-miniを使用
+    
+    # 初期管理者ユーザー（アプリ起動時に自動作成）
+    # 本番環境では Secret Manager から注入することを推奨
+    INITIAL_ADMIN_EMAIL: Optional[str] = None
+    INITIAL_ADMIN_PASSWORD: Optional[str] = None
+    INITIAL_ADMIN_FULL_NAME: Optional[str] = None
 
     @property
     def database_url(self) -> str:

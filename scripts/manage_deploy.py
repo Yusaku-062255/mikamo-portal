@@ -182,6 +182,10 @@ def deploy_backend(project_id: str, region: str) -> str:
         '--set-secrets', 'DATABASE_URL=MIKAMO_DB_URL:latest',
         '--set-secrets', 'JWT_SECRET_KEY=MIKAMO_JWT_SECRET:latest',
         '--set-secrets', 'OPENAI_API_KEY=MIKAMO_OPENAI_KEY:latest',
+        # 初期管理者ユーザー（オプション、Secret Managerに登録されている場合のみ）
+        # '--set-secrets', 'INITIAL_ADMIN_EMAIL=MIKAMO_INITIAL_ADMIN_EMAIL:latest',
+        # '--set-secrets', 'INITIAL_ADMIN_PASSWORD=MIKAMO_INITIAL_ADMIN_PASSWORD:latest',
+        # '--set-secrets', 'INITIAL_ADMIN_FULL_NAME=MIKAMO_INITIAL_ADMIN_FULL_NAME:latest',
         '--quiet'
     ]
 

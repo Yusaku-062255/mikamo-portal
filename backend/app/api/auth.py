@@ -26,6 +26,9 @@ class UserResponse(BaseModel):
     email: str
     full_name: str
     department_id: int
+    department_name: Optional[str] = None
+    department_code: Optional[str] = None
+    role: str
     is_active: bool
 
     class Config:
@@ -108,7 +111,23 @@ async def login(
 
 
 @router.get("/me", response_model=UserResponse)
-async def get_me(current_user: User = Depends(get_current_user)):
-    """現在のユーザー情報を取得"""
-    return current_user
+async def get_me(
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    """現在のユーザー情報を取得（部門情報を含む）"""
+    # 部門情報を取得
+    statement = select(Department).where(Department.id == current_user.department_id)
+    department = session.exec(statement).first()
+    
+    return UserResponse(
+        id=current_user.id,
+        email=current_user.email,
+        full_name=current_user.full_name,
+        department_id=current_user.department_id,
+        department_name=department.name if department else None,
+        department_code=department.code if department else None,
+        role=current_user.role,
+        is_active=current_user.is_active
+    )
 

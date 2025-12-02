@@ -6,6 +6,7 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import DailyLog from './pages/DailyLog'
 import AIChat from './pages/AIChat'
+import AdminUsers from './pages/AdminUsers'
 import PrivateRoute from './components/PrivateRoute'
 
 function App() {
@@ -42,6 +43,14 @@ function App() {
             element={
               <PrivateRoute>
                 <AIChat />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/users"
+            element={
+              <PrivateRoute>
+                <AdminUsers />
               </PrivateRoute>
             }
           />
