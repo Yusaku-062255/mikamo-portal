@@ -1,0 +1,23 @@
+project_id: your-gcp-project-id
+region: asia-northeast1
+
+environments:
+  prod:
+    backend:
+      service_name: mikamo-portal-backend
+      image_name: gcr.io/${project_id}/mikamo-portal-backend
+      # Cloud Run 環境変数として渡す値（初回デプロイ時）
+      env_vars:
+        BACKEND_CORS_ORIGINS: "*"  # 最初は一旦全許可 → 後で絞る
+      # Secret Manager マッピング（キー名だけ設計上残す）
+      secrets:
+        DATABASE_URL: projects/${project_id}/secrets/MIKAMO_DB_URL/versions/latest
+        JWT_SECRET_KEY: projects/${project_id}/secrets/MIKAMO_JWT_SECRET/versions/latest
+        OPENAI_API_KEY: projects/${project_id}/secrets/MIKAMO_OPENAI_KEY/versions/latest
+
+    frontend:
+      service_name: mikamo-portal-frontend
+      image_name: gcr.io/${project_id}/mikamo-portal-frontend
+      # フロントエンドは VITE_API_BASE_URL をビルド引数で受け取るため、
+      # ここには API URL は書かない
+

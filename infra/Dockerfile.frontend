@@ -1,0 +1,41 @@
+# Cloud Run デプロイ用のフロントエンドDockerfile
+# Multi-stage build で軽量化
+
+# Stage 1: ビルド環境
+FROM node:20-alpine as builder
+
+WORKDIR /app
+
+# ビルド時に渡される環境変数（Backend API URL）
+ARG VITE_API_BASE_URL
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+
+# 依存関係のインストール
+COPY frontend/package.json frontend/package-lock.json* ./
+RUN npm ci
+
+# アプリケーションコードをコピーしてビルド
+COPY frontend/ .
+RUN npm run build
+
+# Stage 2: 実行環境（Nginx）
+FROM nginx:alpine
+
+# ビルド成果物をコピー
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Nginx設定をコピー（テンプレートとして）
+COPY infra/nginx.conf /etc/nginx/conf.d/default.conf.template
+
+# ポート公開
+EXPOSE 8080
+
+# Cloud Run は PORT 環境変数を使用するため、envsubst で置換
+RUN apk add --no-cache gettext
+
+# 起動スクリプト
+COPY infra/nginx-start.sh /docker-entrypoint.d/
+RUN chmod +x /docker-entrypoint.d/nginx-start.sh
+
+CMD ["/docker-entrypoint.d/nginx-start.sh"]
+

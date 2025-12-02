@@ -1,0 +1,22 @@
+# Cloud Build 設定: Backend イメージのビルド
+# 使用方法:
+#   gcloud builds submit . --project PROJECT_ID --config infra/cloudbuild.backend.yaml \
+#     --substitutions _IMAGE_NAME=gcr.io/PROJECT_ID/mikamo-portal-backend
+
+steps:
+  # Docker イメージをビルド
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - '${_IMAGE_NAME}'
+      - '-f'
+      - 'infra/Dockerfile.backend'
+      - '.'
+
+# ビルドしたイメージを Container Registry にプッシュ
+images:
+  - '${_IMAGE_NAME}'
+
+# タイムアウト設定（15分）
+timeout: '900s'

@@ -1,0 +1,50 @@
+# Cloud Run デプロイ用のバックエンドDockerfile
+# Multi-stage build で軽量化
+
+# Stage 1: ビルド環境
+FROM python:3.11-slim as builder
+
+WORKDIR /app
+
+# システム依存関係のインストール
+RUN apt-get update && apt-get install -y \
+    gcc \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python依存関係のインストール
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir --user -r requirements.txt
+
+# Stage 2: 実行環境
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# システム依存関係（実行時のみ）
+RUN apt-get update && apt-get install -y \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# ビルドステージから依存関係をコピー
+COPY --from=builder /root/.local /root/.local
+
+# アプリケーションコードをコピー
+COPY backend/ .
+
+# エントリーポイントスクリプトをコピー
+COPY infra/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# パスに追加
+ENV PATH=/root/.local/bin:$PATH
+
+# ポート公開
+EXPOSE 8080
+
+# Cloud Run は PORT 環境変数を使用
+ENV PORT=8080
+
+# マイグレーション実行後にアプリケーションを起動
+CMD ["/entrypoint.sh"]
+

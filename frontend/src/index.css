@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* モバイルファースト: タッチターゲットは最低48px */
+@layer base {
+  body {
+    @apply bg-white text-gray-900;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  /* スクロールバーのスタイル */
+  ::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-gray-100;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 rounded-full;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400;
+  }
+}
+
+/* 大きなボタン: 誤タップを防ぐ */
+@layer components {
+  .btn-primary {
+    @apply bg-mikamo-blue text-white font-bold py-4 px-6 rounded-lg text-lg;
+    @apply min-h-[48px] min-w-[120px];
+    @apply active:bg-blue-700 transition-colors;
+    @apply shadow-lg;
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-200 text-gray-800 font-bold py-4 px-6 rounded-lg text-lg;
+    @apply min-h-[48px] min-w-[120px];
+    @apply active:bg-gray-300 transition-colors;
+  }
+  
+  /* 入力フィールド */
+  .input-field {
+    @apply w-full px-4 py-3 text-lg border-2 border-gray-300 rounded-lg;
+    @apply focus:outline-none focus:border-mikamo-blue;
+    @apply min-h-[48px];
+  }
+  
+  /* カード */
+  .card {
+    @apply bg-white rounded-xl shadow-md p-6;
+  }
+}
+

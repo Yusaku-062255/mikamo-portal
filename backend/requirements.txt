@@ -1,0 +1,25 @@
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+
+# SQLModel 0.0.22 は Pydantic v2 に完全対応しています
+sqlmodel>=0.0.22
+
+# Pydantic v2系を明示的に指定（email-validator含む）
+pydantic[email]>=2.6.0
+pydantic-settings>=2.1.0
+
+# DB & Migration
+psycopg2-binary>=2.9.9
+alembic>=1.13.0
+
+# Auth & Security
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+python-multipart>=0.0.9
+
+# Utils
+python-dotenv>=1.0.0
+structlog>=24.1.0
+openai>=1.12.0
+
+# CACHE BUSTER: 2025-12-01-FIX-01

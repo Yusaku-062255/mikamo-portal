@@ -1,0 +1,29 @@
+# Cloud Build 設定: Frontend イメージのビルド
+# 使用方法:
+#   gcloud builds submit . --project PROJECT_ID --config infra/cloudbuild.frontend.yaml \
+#     --substitutions _IMAGE_NAME=gcr.io/PROJECT_ID/mikamo-portal-frontend,_VITE_API_BASE_URL=https://backend-url.run.app
+
+steps:
+  # Docker イメージをビルド（VITE_API_BASE_URL を build-arg で渡す）
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - '${_IMAGE_NAME}'
+      - '-f'
+      - 'infra/Dockerfile.frontend'
+      - '--build-arg'
+      - 'VITE_API_BASE_URL=${_VITE_API_BASE_URL}'
+      - '.'
+
+# ビルドしたイメージを Container Registry にプッシュ
+images:
+  - '${_IMAGE_NAME}'
+
+# Substitution 変数のデフォルト値
+substitutions:
+  _IMAGE_NAME: 'gcr.io/$PROJECT_ID/mikamo-portal-frontend'
+  _VITE_API_BASE_URL: 'http://localhost:8080'
+
+# タイムアウト設定（15分）
+timeout: '900s'
