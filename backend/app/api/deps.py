@@ -28,9 +28,15 @@ async def get_current_user(
     payload = decode_access_token(token)
     if payload is None:
         raise credentials_exception
-    
-    user_id: Optional[int] = payload.get("sub")
-    if user_id is None:
+
+    # sub は文字列として格納されているので、整数に変換
+    sub = payload.get("sub")
+    if sub is None:
+        raise credentials_exception
+
+    try:
+        user_id = int(sub)
+    except (ValueError, TypeError):
         raise credentials_exception
     
     statement = select(User).where(User.id == user_id)

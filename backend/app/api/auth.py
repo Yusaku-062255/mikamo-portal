@@ -98,10 +98,11 @@ async def login(
     department_code = department.code if department else ""
     
     # JWTトークンに user_id, role, department_code を含める
+    # sub は JWT仕様で文字列である必要がある
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={
-            "sub": user.id,
+            "sub": str(user.id),
             "role": user.role,
             "department_code": department_code
         },
