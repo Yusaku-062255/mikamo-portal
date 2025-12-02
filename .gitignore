@@ -55,3 +55,11 @@ logs/
 # Docker
 .dockerignore
 
+# Claude Code
+.claude/
+
+# Google Cloud credentials (exclude JSON except config files)
+*-credentials.json
+*-key.json
+service-account*.json
+
