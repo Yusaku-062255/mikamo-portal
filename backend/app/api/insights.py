@@ -212,8 +212,9 @@ async def create_insight(
 async def update_insight(
     insight_id: int,
     insight_data: InsightUpdate,
-    current_user: User = Depends(require_role("head", "admin")()),
-    session: Session = Depends(get_session)
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+    _: None = Depends(require_role("head", "admin"))
 ):
     """
     Insightを更新

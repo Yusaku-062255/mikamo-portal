@@ -203,12 +203,13 @@ async def get_business_unit_summary(
 @router.get("/hq/summary", response_model=List[PortalSummaryResponse])
 async def get_hq_summary(
     days: int = Query(14, description="集計期間（日数）"),
-    current_user: User = Depends(require_role("head", "admin")()),
-    session: Session = Depends(get_session)
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+    _: None = Depends(require_role("head", "admin"))
 ):
     """
     本部ビュー: 全部門のサマリーデータを取得
-    
+
     権限: head/admin のみ
     """
     # テナントの全事業部門を取得
@@ -243,12 +244,13 @@ class BusinessUnitHealthResponse(BaseModel):
 
 @router.get("/hq/health", response_model=List[BusinessUnitHealthResponse])
 async def get_hq_health(
-    current_user: User = Depends(require_role("head", "admin")()),
-    session: Session = Depends(get_session)
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+    _: None = Depends(require_role("head", "admin"))
 ):
     """
     本部ビュー: 全部門の健康度スコアを取得
-    
+
     権限: head/admin のみ
     """
     from app.models.business_unit_health import BusinessUnitHealth

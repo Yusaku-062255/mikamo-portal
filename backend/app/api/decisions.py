@@ -56,12 +56,13 @@ async def list_decisions(
     status: Optional[DecisionStatus] = Query(None, description="ステータスで絞り込み"),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
-    current_user: User = Depends(require_role("head", "admin")()),
-    session: Session = Depends(get_session)
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+    _: None = Depends(require_role("head", "admin"))
 ):
     """
     Decision一覧を取得
-    
+
     権限: head/admin のみ
     """
     statement = select(Decision)
@@ -109,12 +110,13 @@ async def list_decisions(
 @router.post("", response_model=DecisionResponse, status_code=status.HTTP_201_CREATED)
 async def create_decision(
     decision_data: DecisionCreate,
-    current_user: User = Depends(require_role("head", "admin")()),
-    session: Session = Depends(get_session)
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+    _: None = Depends(require_role("head", "admin"))
 ):
     """
     Decisionを作成
-    
+
     権限: head/admin のみ
     """
     # テナントIDを取得
@@ -182,12 +184,13 @@ async def create_decision(
 async def update_decision(
     decision_id: int,
     decision_data: DecisionUpdate,
-    current_user: User = Depends(require_role("head", "admin")()),
-    session: Session = Depends(get_session)
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+    _: None = Depends(require_role("head", "admin"))
 ):
     """
     Decisionを更新
-    
+
     権限: head/admin のみ
     """
     decision = session.get(Decision, decision_id)

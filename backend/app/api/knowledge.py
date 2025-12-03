@@ -373,8 +373,9 @@ async def update_knowledge_item(
 @router.delete("/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_knowledge_item(
     item_id: int,
-    current_user: User = Depends(require_role("admin", "head")()),
-    session: Session = Depends(get_session)
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+    _: None = Depends(require_role("admin", "head"))
 ):
     """
     ナレッジアイテムを削除
