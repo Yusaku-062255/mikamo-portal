@@ -41,6 +41,11 @@ class KnowledgeItem(SQLModel, table=True):
     # Relationships
     tenant: "Tenant" = Relationship(back_populates="knowledge_items")
     business_unit: Optional["BusinessUnit"] = Relationship(back_populates="knowledge_items")
-    creator: "User" = Relationship(foreign_keys=[created_by])
-    updater: Optional["User"] = Relationship(foreign_keys=[updated_by])
+    # SQLModelでは複数のFKを持つ場合、sa_relationship_kwargsでforeign_keysを指定
+    creator: Optional["User"] = Relationship(
+        sa_relationship_kwargs={"foreign_keys": "[KnowledgeItem.created_by]"}
+    )
+    updater: Optional["User"] = Relationship(
+        sa_relationship_kwargs={"foreign_keys": "[KnowledgeItem.updated_by]"}
+    )
 
