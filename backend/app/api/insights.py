@@ -6,7 +6,7 @@ AIによる分析・提案を管理するAPI
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlmodel import Session, select
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from app.core.database import get_session
 from app.models.insight import Insight, InsightType
 from app.models.user import User
