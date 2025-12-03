@@ -14,9 +14,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # アプリケーションコードのコピー
 COPY . .
 
-# ポート公開
-EXPOSE 8000
+# ポート公開 (Cloud RunはデフォルトでPORT=8080を設定)
+EXPOSE 8080
 
-# 起動コマンド
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# 起動コマンド（環境変数PORTを使用、デフォルト8080）
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}"]
 

@@ -9,6 +9,8 @@ interface KnowledgeItem {
   content: string
   business_unit_id: number | null
   business_unit_name: string | null
+  category: string | null
+  source: string | null
   tags: string[] | null
   created_by: number
   created_by_name: string | null
@@ -30,7 +32,18 @@ const KnowledgeList = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterBusinessUnitId, setFilterBusinessUnitId] = useState<number | ''>('')
+  const [filterCategory, setFilterCategory] = useState('')
   const [filterTag, setFilterTag] = useState('')
+
+  // カテゴリ一覧（固定リスト）
+  const categories = [
+    { value: '', label: 'すべて' },
+    { value: 'DXレポート', label: 'DXレポート' },
+    { value: 'レシピ', label: 'レシピ' },
+    { value: 'マニュアル', label: 'マニュアル' },
+    { value: 'お知らせ', label: 'お知らせ' },
+    { value: 'FAQ', label: 'FAQ' },
+  ]
 
   useEffect(() => {
     if (!user) {
@@ -39,7 +52,7 @@ const KnowledgeList = () => {
     }
     fetchBusinessUnits()
     fetchItems()
-  }, [user, searchQuery, filterBusinessUnitId, filterTag])
+  }, [user, searchQuery, filterBusinessUnitId, filterCategory, filterTag])
 
   const fetchBusinessUnits = async () => {
     try {
@@ -66,7 +79,12 @@ const KnowledgeList = () => {
 
       const url = `/api/knowledge${params.toString() ? '?' + params.toString() : ''}`
       const response = await api.get(url)
-      setItems(response.data)
+      // カテゴリでフィルタ（フロントエンド側でフィルタ）
+      let filteredItems = response.data
+      if (filterCategory) {
+        filteredItems = filteredItems.filter((item: KnowledgeItem) => item.category === filterCategory)
+      }
+      setItems(filteredItems)
     } catch (error: any) {
       console.error('ナレッジ取得エラー:', error)
     } finally {
@@ -148,6 +166,22 @@ const KnowledgeList = () => {
             </div>
             <div className="flex-1">
               <label className="block text-sm font-medium text-gray-700 mb-2">
+                カテゴリで絞り込み
+              </label>
+              <select
+                value={filterCategory}
+                onChange={(e) => setFilterCategory(e.target.value)}
+                className="input-field"
+              >
+                {categories.map((cat) => (
+                  <option key={cat.value} value={cat.value}>
+                    {cat.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 タグで絞り込み
               </label>
               <input
@@ -186,7 +220,18 @@ const KnowledgeList = () => {
                       <p className="text-sm text-gray-600 mb-2 line-clamp-2">
                         {item.content}
                       </p>
-                      <div className="flex items-center gap-4 text-xs text-gray-500">
+                      <div className="flex items-center gap-2 flex-wrap text-xs text-gray-500">
+                        {item.category && (
+                          <span className={`px-2 py-1 rounded-full font-medium ${
+                            item.category === 'DXレポート' ? 'bg-purple-100 text-purple-800' :
+                            item.category === 'レシピ' ? 'bg-orange-100 text-orange-800' :
+                            item.category === 'マニュアル' ? 'bg-blue-100 text-blue-800' :
+                            item.category === 'FAQ' ? 'bg-green-100 text-green-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {item.category}
+                          </span>
+                        )}
                         <span>
                           {item.business_unit_name || '全社共通'}
                         </span>

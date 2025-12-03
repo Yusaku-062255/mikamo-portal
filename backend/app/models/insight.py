@@ -4,7 +4,7 @@ Insight（AIによる分析・提案）モデル
 多数のIssueや会話ログから、AIが抽出した「こうした方がいいのでは？」を構造化して保存
 """
 from sqlmodel import SQLModel, Field, Relationship, Column
-from typing import Optional, List
+from typing import Optional
 from datetime import datetime
 from sqlalchemy import Text
 from enum import Enum
@@ -43,11 +43,8 @@ class Insight(SQLModel, table=True):
     tenant: "Tenant" = Relationship()
     business_unit: Optional["BusinessUnit"] = Relationship()
     creator: Optional["User"] = Relationship()
-    related_issues: List["Issue"] = Relationship(
-        back_populates="insights",
-        link_model=None  # 中間テーブルは後で追加可能
-    )
-    # 中間テーブル経由の関係は後で実装（一旦シンプルに）
+    # related_issues は中間テーブル未実装のため一旦コメントアウト
+    # 将来的に多対多関係として実装予定
 
 
 # 中間テーブル: IssueとInsightの多対多関係（将来的に実装）

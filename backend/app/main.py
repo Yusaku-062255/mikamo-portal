@@ -14,6 +14,7 @@ from app.core.middleware import (
 )
 from app.api import auth, daily_logs, tasks, ai_chat, admin, knowledge, portal, issues, insights, decisions
 from app.core.init_db import init_database
+from app.core.migrate_columns import run_migrations
 
 # ロギングを初期化
 setup_logging()
@@ -76,8 +77,11 @@ async def on_startup():
         # 既に存在するテーブルはスキップされ、存在しないテーブルのみ作成される
         SQLModel.metadata.create_all(engine)
         print("✅ データベーステーブルの自動作成が完了しました")
-        
-        # 2. 部門と初期管理者ユーザーを自動作成
+
+        # 2. 欠けているカラムを追加（既存テーブルへのマイグレーション）
+        run_migrations()
+
+        # 3. 部門と初期管理者ユーザーを自動作成
         # init_database() 内で以下を実行:
         # - 5つの事業部門（ミカモ喫茶、カーコーティング、中古車販売、ミカモ石油、経営本陣）を作成
         # - 環境変数から初期管理者ユーザーを作成（INITIAL_ADMIN_EMAIL 等が設定されている場合）

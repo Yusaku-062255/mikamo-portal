@@ -23,8 +23,20 @@ const KnowledgeEdit = () => {
     title: '',
     content: '',
     business_unit_id: 0,
+    category: '',
+    source: '',
     tags: '' as string | string[]
   })
+
+  // カテゴリ一覧
+  const categories = [
+    { value: '', label: '未設定' },
+    { value: 'DXレポート', label: 'DXレポート' },
+    { value: 'レシピ', label: 'レシピ' },
+    { value: 'マニュアル', label: 'マニュアル' },
+    { value: 'お知らせ', label: 'お知らせ' },
+    { value: 'FAQ', label: 'FAQ' },
+  ]
 
   useEffect(() => {
     if (!user) {
@@ -65,6 +77,8 @@ const KnowledgeEdit = () => {
         title: item.title,
         content: item.content,
         business_unit_id: item.business_unit_id || 0,
+        category: item.category || '',
+        source: item.source || '',
         tags: item.tags ? item.tags.join(', ') : ''
       })
     } catch (error: any) {
@@ -88,6 +102,8 @@ const KnowledgeEdit = () => {
         title: formData.title,
         content: formData.content,
         business_unit_id: formData.business_unit_id || null,
+        category: formData.category || null,
+        source: formData.source || null,
         tags: tagsArray
       }
 
@@ -186,6 +202,44 @@ const KnowledgeEdit = () => {
               <p className="text-xs text-gray-500 mt-1">
                 特定の事業部門の情報の場合は選択してください。全社共通の場合は「全社共通」を選択
               </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  カテゴリ
+                </label>
+                <select
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  className="input-field"
+                >
+                  {categories.map((cat) => (
+                    <option key={cat.value} value={cat.value}>
+                      {cat.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  情報の種類を選択
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  情報元
+                </label>
+                <input
+                  type="text"
+                  value={formData.source}
+                  onChange={(e) => setFormData({ ...formData, source: e.target.value })}
+                  className="input-field"
+                  placeholder="例: 社内資料、Claude調査"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  情報の出典を入力
+                </p>
+              </div>
             </div>
 
             <div>

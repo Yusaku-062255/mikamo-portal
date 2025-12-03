@@ -35,6 +35,6 @@ class BusinessUnit(SQLModel, table=True):
     tenant: "Tenant" = Relationship(back_populates="business_units")
     users: List["User"] = Relationship(back_populates="business_unit")
     knowledge_items: List["KnowledgeItem"] = Relationship(back_populates="business_unit")
-    daily_logs: List["DailyLog"] = Relationship(back_populates="business_unit")
+    # daily_logs は Department を経由するため、ここでは定義しない
     conversations: List["Conversation"] = Relationship(back_populates="business_unit")
 

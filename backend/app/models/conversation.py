@@ -26,9 +26,9 @@ class Conversation(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
     # Relationships
-    tenant: "Tenant" = Relationship()
-    user: "User" = Relationship()
-    business_unit: Optional["BusinessUnit"] = Relationship()
+    tenant: "Tenant" = Relationship(back_populates="conversations")
+    user: "User" = Relationship(back_populates="conversations")
+    business_unit: Optional["BusinessUnit"] = Relationship(back_populates="conversations")
     messages: List["Message"] = Relationship(back_populates="conversation")
 
 
