@@ -50,7 +50,29 @@ class Settings(BaseSettings):
     # Cloud Run (環境変数から取得、デフォルトは8080)
     PORT: int = 8080
     
-    # OpenAI API
+    # AI Provider設定（環境変数で切り替え可能）
+    AI_PROVIDER: str = "openai"  # "openai", "cloud-code", "anthropic" など
+    AI_API_KEY: Optional[str] = None  # 汎用AI APIキー（Cloud Code等で使用）
+    AI_API_BASE_URL: Optional[str] = None  # Cloud Code API等のベースURL
+    AI_MODEL: str = "gpt-4o-mini"  # 使用するモデル名（経営判断用・デフォルト）
+    
+    # スタッフQA用軽量モデル設定（現場向けの最低限AI）
+    AI_PROVIDER_STAFF: str = "anthropic"  # スタッフQA用プロバイダー（"anthropic", "cloud-code", "openai"）
+    AI_MODEL_STAFF: str = "claude-3-haiku-20240307"  # クラウド側の「一番軽いモデル」の名前（Claude Haiku）
+    AI_MAX_TOKENS_STAFF: int = 1000  # スタッフQA用の最大トークン数（コスト最適化）
+    AI_TEMPERATURE_STAFF: float = 0.5  # スタッフQA用の温度パラメータ（低めに設定）
+    
+    # Anthropic (Claude) API設定
+    ANTHROPIC_API_KEY: Optional[str] = None  # Claude APIキー（.env で設定、コードには絶対ベタ書きしない）
+    ANTHROPIC_API_BASE_URL: Optional[str] = None  # Claude API ベースURL（デフォルト: 公式エンドポイント）
+    
+    # 将来の経営判断用高性能モデル設定（プレースホルダ、今回は実装しない）
+    # AI_PROVIDER_EXECUTIVE: str = "openai"  # 経営判断用プロバイダー
+    # AI_MODEL_EXECUTIVE: str = "gpt-4"  # 経営判断用高性能モデル
+    # AI_MAX_TOKENS_EXECUTIVE: int = 4000
+    # AI_TEMPERATURE_EXECUTIVE: float = 0.7
+    
+    # OpenAI API（後方互換性のため残す）
     OPENAI_API_KEY: Optional[str] = None
     OPENAI_MODEL: str = "gpt-4o-mini"  # GPT-4o-miniを使用
     

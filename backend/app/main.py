@@ -12,7 +12,7 @@ from app.core.middleware import (
     http_exception_handler,
     validation_exception_handler
 )
-from app.api import auth, daily_logs, tasks, ai_chat, admin
+from app.api import auth, daily_logs, tasks, ai_chat, admin, knowledge, portal, issues, insights, decisions
 from app.core.init_db import init_database
 
 # ロギングを初期化
@@ -47,6 +47,11 @@ app.include_router(daily_logs.router, prefix="/api/daily-logs", tags=["日次ロ
 app.include_router(tasks.router, prefix="/api/tasks", tags=["タスク"])
 app.include_router(ai_chat.router, prefix="/api/ai", tags=["AI相談"])
 app.include_router(admin.router, prefix="/api/admin", tags=["管理者"])
+app.include_router(portal.router, prefix="/api/portal", tags=["ポータル"])
+app.include_router(issues.router, prefix="/api/issues", tags=["Issue"])
+app.include_router(insights.router, prefix="/api/insights", tags=["Insight"])
+app.include_router(decisions.router, prefix="/api/decisions", tags=["Decision"])
+app.include_router(knowledge.router, prefix="/api/knowledge", tags=["ナレッジベース"])
 
 
 @app.on_event("startup")

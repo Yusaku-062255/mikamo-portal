@@ -7,6 +7,15 @@ import Dashboard from './pages/Dashboard'
 import DailyLog from './pages/DailyLog'
 import AIChat from './pages/AIChat'
 import AdminUsers from './pages/AdminUsers'
+import PortalHQ from './pages/PortalHQ'
+import PortalGasStation from './pages/PortalGasStation'
+import PortalCarCoating from './pages/PortalCarCoating'
+import PortalUsedCar from './pages/PortalUsedCar'
+import PortalCafe from './pages/PortalCafe'
+import KnowledgeList from './pages/KnowledgeList'
+import KnowledgeEdit from './pages/KnowledgeEdit'
+import IssuesList from './pages/IssuesList'
+import InsightsList from './pages/InsightsList'
 import PrivateRoute from './components/PrivateRoute'
 
 function App() {
@@ -51,6 +60,94 @@ function App() {
             element={
               <PrivateRoute>
                 <AdminUsers />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/portal/hq"
+            element={
+              <PrivateRoute>
+                <PortalHQ />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/portal/gas-station"
+            element={
+              <PrivateRoute>
+                <PortalGasStation />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/portal/car-coating"
+            element={
+              <PrivateRoute>
+                <PortalCarCoating />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/portal/used-car"
+            element={
+              <PrivateRoute>
+                <PortalUsedCar />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/portal/cafe"
+            element={
+              <PrivateRoute>
+                <PortalCafe />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/knowledge"
+            element={
+              <PrivateRoute>
+                <KnowledgeList />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/knowledge/new"
+            element={
+              <PrivateRoute>
+                <KnowledgeEdit />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/knowledge/:id"
+            element={
+              <PrivateRoute>
+                <KnowledgeEdit />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/issues"
+            element={
+              <PrivateRoute>
+                <IssuesList />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/portal/:businessUnitCode/issues"
+            element={
+              <PrivateRoute>
+                <IssuesList />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/insights"
+            element={
+              <PrivateRoute allowedRoles={['head', 'admin']}>
+                <InsightsList />
               </PrivateRoute>
             }
           />

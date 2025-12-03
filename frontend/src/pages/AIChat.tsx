@@ -1,57 +1,150 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuthStore } from '../stores/authStore'
 import api from '../utils/api'
 
+interface Conversation {
+  id: number
+  title: string | null
+  business_unit_id: number | null
+  business_unit_name: string | null
+  created_at: string
+  updated_at: string
+  message_count: number
+}
+
+interface Message {
+  id: number
+  role: 'user' | 'assistant'
+  content: string
+  created_at: string
+}
+
+interface BusinessUnit {
+  id: number
+  name: string
+  code: string
+}
+
 const AIChat = () => {
+  const user = useAuthStore((state) => state.user)
   const navigate = useNavigate()
-  const [question, setQuestion] = useState('')
+  const [message, setMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [suggestionTips, setSuggestionTips] = useState<string[]>([])
-  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(true)
+  const [conversations, setConversations] = useState<Conversation[]>([])
+  const [currentConversationId, setCurrentConversationId] = useState<number | null>(null)
+  const [messages, setMessages] = useState<Message[]>([])
+  const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([])
+  const [selectedBusinessUnitId, setSelectedBusinessUnitId] = useState<number | null>(null)
+  const [isLoadingConversations, setIsLoadingConversations] = useState(true)
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false)
+  const [error, setError] = useState('')
 
   useEffect(() => {
-    // 部署に応じたサジェストを取得
-    const fetchSuggestions = async () => {
-      try {
-        const response = await api.get('/api/ai/suggestions')
-        setSuggestionTips(response.data)
-      } catch (error) {
-        console.error('サジェスト取得エラー:', error)
-        // フォールバック
-        setSuggestionTips([
-          '今日の接客のコツは？',
-          '売上を上げるための工夫は？',
-        ])
-      } finally {
-        setIsLoadingSuggestions(false)
-      }
+    if (!user) {
+      navigate('/login')
+      return
     }
-    fetchSuggestions()
-  }, [])
+    fetchBusinessUnits()
+    fetchConversations()
+  }, [user])
 
-  const handleSuggestionClick = (tip: string) => {
-    setQuestion(tip)
+  useEffect(() => {
+    if (currentConversationId) {
+      fetchMessages(currentConversationId)
+    } else {
+      setMessages([])
+    }
+  }, [currentConversationId])
+
+  const fetchBusinessUnits = async () => {
+    try {
+      const response = await api.get('/api/portal/business-units')
+      setBusinessUnits(response.data)
+      // ユーザーの所属部門をデフォルトに設定
+      if (user?.business_unit_id) {
+        setSelectedBusinessUnitId(user.business_unit_id)
+      } else if (response.data.length > 0) {
+        setSelectedBusinessUnitId(response.data[0].id)
+      }
+    } catch (error) {
+      console.error('事業部門取得エラー:', error)
+    }
+  }
+
+  const fetchConversations = async () => {
+    setIsLoadingConversations(true)
+    try {
+      const response = await api.get('/api/ai/conversations')
+      setConversations(response.data)
+    } catch (error) {
+      console.error('会話一覧取得エラー:', error)
+    } finally {
+      setIsLoadingConversations(false)
+    }
+  }
+
+  const fetchMessages = async (conversationId: number) => {
+    setIsLoadingMessages(true)
+    try {
+      const response = await api.get(`/api/ai/conversations/${conversationId}/messages`)
+      setMessages(response.data)
+    } catch (error) {
+      console.error('メッセージ取得エラー:', error)
+    } finally {
+      setIsLoadingMessages(false)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!question.trim()) return
+    if (!message.trim()) return
 
+    setError('')
     setIsLoading(true)
+
     try {
-      const response = await api.post('/api/ai', { question })
-      // 回答が含まれている場合は表示（v0.1ではダミー回答）
-      if (response.data.answer) {
-        alert(`回答: ${response.data.answer}`)
-      } else {
-        alert('質問を送信しました。')
+      // スタッフ・マネージャーの場合はスタッフQAモードを使用
+      const mode = (user?.role === 'staff' || user?.role === 'manager') ? 'staff_qa' : undefined
+      
+      const response = await api.post('/api/ai/chat', {
+        message: message.trim(),
+        conversation_id: currentConversationId,
+        business_unit_id: selectedBusinessUnitId,
+        mode: mode  // スタッフQAモードを指定
+      })
+
+      // 会話IDを更新
+      if (!currentConversationId) {
+        setCurrentConversationId(response.data.conversation_id)
       }
-      setQuestion('')
+
+      // メッセージを追加
+      setMessages([
+        ...messages,
+        { id: 0, role: 'user', content: message.trim(), created_at: new Date().toISOString() },
+        { id: response.data.message_id, role: 'assistant', content: response.data.reply, created_at: new Date().toISOString() }
+      ])
+
+      setMessage('')
+      
+      // 会話一覧を更新
+      fetchConversations()
     } catch (error: any) {
-      alert(error.response?.data?.detail || '送信に失敗しました')
+      setError(error.response?.data?.detail || '送信に失敗しました')
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handleNewConversation = () => {
+    setCurrentConversationId(null)
+    setMessages([])
+    setMessage('')
+  }
+
+  const handleSelectConversation = (conversationId: number) => {
+    setCurrentConversationId(conversationId)
   }
 
   return (
@@ -59,79 +152,167 @@ const AIChat = () => {
       {/* ヘッダー */}
       <header className="bg-mikamo-blue text-white p-4 shadow-md">
         <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold">AI相談 🤖</h1>
+            <p className="text-sm opacity-90 mt-1">ミカモ専属AIアシスタント</p>
+          </div>
           <button
             onClick={() => navigate('/dashboard')}
-            className="text-lg"
+            className="text-sm px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors"
           >
-            ← 戻る
+            ダッシュボードに戻る
           </button>
-          <h1 className="text-xl font-bold">AI相談</h1>
-          <div className="w-8"></div>
         </div>
       </header>
 
-      <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
-        {/* 説明 */}
-        <div className="card">
-          <h2 className="text-xl font-bold mb-2 text-mikamo-blue">
-            AIに相談してみましょう 🤖
-          </h2>
-          <p className="text-gray-600">
-            何を聞けばいいかわからない時は、下のサジェストから選んでください。
-          </p>
-        </div>
-
-        {/* サジェストチップ */}
-        <div className="card">
-          <h3 className="text-lg font-semibold mb-4 text-gray-700">
-            よくある質問
-          </h3>
-          {isLoadingSuggestions ? (
-            <div className="text-center py-4 text-gray-500">読み込み中...</div>
-          ) : (
-            <div className="space-y-2">
-              {suggestionTips.map((tip, index) => (
+      <div className="max-w-6xl mx-auto px-4 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* サイドバー: 会話一覧 */}
+          <div className="lg:col-span-1">
+            <div className="card">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-mikamo-blue">会話履歴</h2>
                 <button
-                  key={index}
-                  type="button"
-                  onClick={() => handleSuggestionClick(tip)}
-                  className="w-full text-left p-4 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors active:bg-gray-200"
+                  onClick={handleNewConversation}
+                  className="text-sm px-3 py-1 bg-mikamo-blue text-white rounded hover:bg-blue-700 transition-colors"
                 >
-                  <span className="text-mikamo-blue mr-2">💡</span>
-                  {tip}
+                  新規
                 </button>
-              ))}
+              </div>
+
+              {/* 事業部門選択 */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  事業部門
+                </label>
+                <select
+                  value={selectedBusinessUnitId || ''}
+                  onChange={(e) => setSelectedBusinessUnitId(e.target.value ? Number(e.target.value) : null)}
+                  className="input-field"
+                >
+                  {businessUnits.map((bu) => (
+                    <option key={bu.id} value={bu.id}>
+                      {bu.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* 会話一覧 */}
+              {isLoadingConversations ? (
+                <div className="text-center py-4 text-gray-500">読み込み中...</div>
+              ) : conversations.length === 0 ? (
+                <div className="text-center py-4 text-gray-500 text-sm">
+                  会話履歴がありません
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                  {conversations.map((conv) => (
+                    <button
+                      key={conv.id}
+                      onClick={() => handleSelectConversation(conv.id)}
+                      className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                        currentConversationId === conv.id
+                          ? 'bg-mikamo-blue text-white border-mikamo-blue'
+                          : 'bg-gray-50 hover:bg-gray-100 border-gray-200'
+                      }`}
+                    >
+                      <div className="font-semibold text-sm mb-1">
+                        {conv.title || '（タイトルなし）'}
+                      </div>
+                      <div className={`text-xs ${currentConversationId === conv.id ? 'opacity-90' : 'text-gray-500'}`}>
+                        {conv.business_unit_name || '全社共通'} · {conv.message_count}件
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </div>
 
-        {/* 質問フォーム */}
-        <form onSubmit={handleSubmit} className="card">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            質問を入力してください
-          </label>
-          <textarea
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            className="input-field min-h-[150px]"
-            placeholder="音声入力でも大丈夫です。気になることを何でも聞いてみましょう。"
-            required
-          />
-          <button
-            type="submit"
-            disabled={isLoading || !question.trim()}
-            className="btn-primary w-full mt-4"
-          >
-            {isLoading ? '送信中...' : '質問を送信'}
-          </button>
-        </form>
+          {/* メイン: チャットエリア */}
+          <div className="lg:col-span-2">
+            <div className="card flex flex-col" style={{ minHeight: '500px' }}>
+              {/* メッセージ表示エリア */}
+              <div className="flex-1 overflow-y-auto mb-4 space-y-4" style={{ maxHeight: '400px' }}>
+                {isLoadingMessages ? (
+                  <div className="text-center py-8 text-gray-500">読み込み中...</div>
+                ) : messages.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <p className="text-lg mb-2">👋 こんにちは！</p>
+                    <p className="text-sm">何でも聞いてください。ナレッジベースから関連情報を参照して回答します。</p>
+                  </div>
+                ) : (
+                  messages.map((msg) => (
+                    <div
+                      key={msg.id}
+                      className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div
+                        className={`max-w-[80%] rounded-lg p-4 ${
+                          msg.role === 'user'
+                            ? 'bg-mikamo-blue text-white'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}
+                      >
+                        <div className="whitespace-pre-wrap">{msg.content}</div>
+                        <div className={`text-xs mt-2 ${msg.role === 'user' ? 'text-white/70' : 'text-gray-500'}`}>
+                          {new Date(msg.created_at).toLocaleTimeString('ja-JP', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+                {isLoading && (
+                  <div className="flex justify-start">
+                    <div className="bg-gray-100 rounded-lg p-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
 
-        {/* 注意書き */}
-        <div className="card bg-blue-50 border border-blue-200">
-          <p className="text-sm text-blue-800">
-            <strong>注意:</strong> AI回答機能はv0.1では基本的な回答を返します。
-            v0.2以降でより高度なAI機能を実装予定です。
-          </p>
+              {/* エラーメッセージ */}
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+                  {error}
+                </div>
+              )}
+
+              {/* 入力フォーム */}
+              <form onSubmit={handleSubmit} className="flex gap-2">
+                <textarea
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  className="input-field flex-1 min-h-[80px] resize-none"
+                  placeholder="質問を入力してください..."
+                  required
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                      handleSubmit(e as any)
+                    }
+                  }}
+                />
+                <button
+                  type="submit"
+                  disabled={isLoading || !message.trim()}
+                  className="btn-primary px-6 self-end"
+                >
+                  {isLoading ? '送信中...' : '送信'}
+                </button>
+              </form>
+              <p className="text-xs text-gray-500 mt-1">
+                Enterで送信、Cmd/Ctrl+Enterで改行
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -139,4 +320,3 @@ const AIChat = () => {
 }
 
 export default AIChat
-
