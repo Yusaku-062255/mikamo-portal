@@ -4,15 +4,7 @@ import { useAuthStore } from '../stores/authStore'
 import api from '../utils/api'
 import { format } from 'date-fns'
 import { ja } from 'date-fns/locale'
-import { TrendChart, DepartmentsComparisonChart } from '../components/charts'
-
-interface BusinessUnit {
-  id: number
-  name: string
-  type: string
-  code: string
-  description?: string
-}
+import { DepartmentsComparisonChart } from '../components/charts'
 
 interface PortalSummary {
   business_unit_id: number
@@ -24,14 +16,6 @@ interface PortalSummary {
   log_count: number
   period_start: string
   period_end: string
-}
-
-interface TrendData {
-  date: string
-  sales: number
-  customers: number
-  transactions: number
-  weather?: string
 }
 
 interface DepartmentComparisonData {

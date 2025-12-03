@@ -8,6 +8,8 @@ interface User {
   department_id: number
   department_name?: string
   department_code?: string
+  business_unit_id?: number
+  tenant_id?: number
   role: string
   is_active: boolean
 }

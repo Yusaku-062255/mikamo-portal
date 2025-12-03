@@ -146,7 +146,7 @@ function App() {
           <Route
             path="/insights"
             element={
-              <PrivateRoute allowedRoles={['head', 'admin']}>
+              <PrivateRoute>
                 <InsightsList />
               </PrivateRoute>
             }
