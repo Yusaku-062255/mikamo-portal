@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
+import { useTenantSettings } from '../stores/tenantStore'
 import api from '../utils/api'
 import { format } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { TrendChart } from '../components/charts'
+import Layout from '../components/Layout'
 
 interface BusinessUnit {
   id: number
@@ -42,6 +44,7 @@ interface PortalBaseProps {
 const PortalBase = ({ businessUnitCode, pageTitle }: PortalBaseProps) => {
   const user = useAuthStore((state) => state.user)
   const navigate = useNavigate()
+  const { primaryColor } = useTenantSettings()
   const [businessUnit, setBusinessUnit] = useState<BusinessUnit | null>(null)
   const [summary, setSummary] = useState<PortalSummary | null>(null)
   const [trendData, setTrendData] = useState<TrendData[]>([])
@@ -134,42 +137,33 @@ const PortalBase = ({ businessUnitCode, pageTitle }: PortalBaseProps) => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
-      {/* ヘッダー */}
-      <header className="bg-mikamo-blue text-white p-4 shadow-md">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold">{pageTitle}</h1>
-            <p className="text-sm opacity-90 mt-1">
-              {format(new Date(), 'yyyy年M月d日(E)', { locale: ja })}
-            </p>
-          </div>
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="text-sm px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors"
-          >
-            ダッシュボードに戻る
-          </button>
-        </div>
-      </header>
-
+    <Layout showFab onFabClick={() => navigate('/daily-log')} fabLabel="✏️">
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+        {/* ページタイトル */}
+        <div>
+          <h2 className="text-2xl font-bold" style={{ color: primaryColor }}>
+            {pageTitle}
+          </h2>
+          <p className="text-sm text-gray-600 mt-1">
+            {format(new Date(), 'yyyy年M月d日(E)', { locale: ja })}
+          </p>
+        </div>
         {/* サマリーカード */}
         {!isLoading && summary && (
           <div className="card">
-            <h2 className="text-xl font-bold mb-4 text-mikamo-blue">
+            <h2 className="text-xl font-bold mb-4" style={{ color: primaryColor }}>
               {businessUnit.name} のサマリー（直近14日間）
             </h2>
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-blue-50 p-4 rounded-lg">
                 <p className="text-sm text-gray-600 mb-1">合計売上</p>
-                <p className="text-2xl font-bold text-mikamo-blue">
+                <p className="text-2xl font-bold" style={{ color: primaryColor }}>
                   {formatCurrency(summary.total_sales)}
                 </p>
               </div>
               <div className="bg-orange-50 p-4 rounded-lg">
                 <p className="text-sm text-gray-600 mb-1">投稿回数</p>
-                <p className="text-2xl font-bold text-mikamo-orange">
+                <p className="text-2xl font-bold text-orange-600">
                   {summary.log_count}件
                 </p>
               </div>
@@ -192,7 +186,7 @@ const PortalBase = ({ businessUnitCode, pageTitle }: PortalBaseProps) => {
         {/* トレンドグラフ */}
         {(user.role === 'manager' || user.role === 'head' || user.role === 'admin') && (
           <div className="card">
-            <h2 className="text-xl font-bold mb-4 text-mikamo-blue">
+            <h2 className="text-xl font-bold mb-4" style={{ color: primaryColor }}>
               売上・客数トレンド（14日間）
             </h2>
             {isLoadingCharts ? (
@@ -211,7 +205,7 @@ const PortalBase = ({ businessUnitCode, pageTitle }: PortalBaseProps) => {
 
         {/* クイックアクション */}
         <div className="card">
-          <h2 className="text-xl font-bold mb-4 text-mikamo-blue">
+          <h2 className="text-xl font-bold mb-4" style={{ color: primaryColor }}>
             クイックアクション
           </h2>
           <div className="space-y-3">
@@ -230,7 +224,7 @@ const PortalBase = ({ businessUnitCode, pageTitle }: PortalBaseProps) => {
           </div>
         </div>
       </div>
-    </div>
+    </Layout>
   )
 }
 

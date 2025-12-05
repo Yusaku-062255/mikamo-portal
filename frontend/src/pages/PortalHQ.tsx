@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
+import { useTenantSettings } from '../stores/tenantStore'
 import api from '../utils/api'
 import { format } from 'date-fns'
 import { ja } from 'date-fns/locale'
 import { DepartmentsComparisonChart } from '../components/charts'
+import Layout from '../components/Layout'
 
 interface PortalSummary {
   business_unit_id: number
@@ -56,6 +58,7 @@ interface Issue {
 const PortalHQ = () => {
   const user = useAuthStore((state) => state.user)
   const navigate = useNavigate()
+  const { primaryColor } = useTenantSettings()
   const [summaries, setSummaries] = useState<PortalSummary[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [departmentsData, setDepartmentsData] = useState<DepartmentComparisonData[]>([])
@@ -153,10 +156,13 @@ const PortalHQ = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
-      {/* ヘッダー */}
-      <header className="bg-mikamo-blue text-white p-4 shadow-md">
-        <div className="flex items-center justify-between">
+    <Layout>
+      {/* 本部ビュー専用ヘッダー */}
+      <div
+        className="text-white p-4 shadow-md -mx-4 -mt-4 mb-6"
+        style={{ backgroundColor: primaryColor }}
+      >
+        <div className="flex items-center justify-between max-w-6xl mx-auto">
           <div>
             <h1 className="text-xl font-bold">本部ビュー（全社ダッシュボード）</h1>
             <p className="text-sm opacity-90 mt-1">
@@ -170,12 +176,12 @@ const PortalHQ = () => {
             ダッシュボードに戻る
           </button>
         </div>
-      </header>
+      </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+      <div className="max-w-6xl mx-auto space-y-6">
         {/* 部署間比較グラフ */}
         <div className="card">
-          <h2 className="text-xl font-bold mb-4 text-mikamo-blue">
+          <h2 className="text-xl font-bold mb-4" style={{ color: primaryColor }}>
             部署間比較（直近14日間）
           </h2>
           {isLoadingCharts ? (
@@ -193,7 +199,7 @@ const PortalHQ = () => {
 
         {/* 健康度スコア */}
         <div className="card">
-          <h2 className="text-xl font-bold mb-4 text-mikamo-blue">
+          <h2 className="text-xl font-bold mb-4" style={{ color: primaryColor }}>
             各事業部門の健康度スコア
           </h2>
           {isLoadingHealth ? (
@@ -209,7 +215,7 @@ const PortalHQ = () => {
                   key={health.business_unit_id}
                   className="bg-white p-4 rounded-lg border border-gray-200"
                 >
-                  <h3 className="font-bold text-lg mb-3 text-mikamo-blue">
+                  <h3 className="font-bold text-lg mb-3" style={{ color: primaryColor }}>
                     {health.business_unit_name}
                   </h3>
                   <div className="space-y-2">
@@ -263,12 +269,13 @@ const PortalHQ = () => {
         {/* 重要なInsight */}
         <div className="card">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-mikamo-blue">
+            <h2 className="text-xl font-bold" style={{ color: primaryColor }}>
               重要なAI分析・提案（Insight）
             </h2>
             <button
               onClick={() => navigate('/insights')}
-              className="text-sm px-4 py-2 bg-mikamo-blue text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="text-sm px-4 py-2 text-white rounded-lg hover:opacity-90 transition-colors"
+              style={{ backgroundColor: primaryColor }}
             >
               すべて見る
             </button>
@@ -285,7 +292,7 @@ const PortalHQ = () => {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-mikamo-blue">{insight.title}</h3>
+                        <h3 className="font-semibold" style={{ color: primaryColor }}>{insight.title}</h3>
                         <span className={`px-2 py-1 text-xs rounded-full ${
                           insight.type === 'risk' ? 'bg-red-100 text-red-800' :
                           insight.type === 'opportunity' ? 'bg-green-100 text-green-800' :
@@ -308,12 +315,13 @@ const PortalHQ = () => {
         {/* 最近のIssue */}
         <div className="card">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-mikamo-blue">
+            <h2 className="text-xl font-bold" style={{ color: primaryColor }}>
               最近の課題・困りごと（Issue）
             </h2>
             <button
               onClick={() => navigate('/issues')}
-              className="text-sm px-4 py-2 bg-mikamo-blue text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="text-sm px-4 py-2 text-white rounded-lg hover:opacity-90 transition-colors"
+              style={{ backgroundColor: primaryColor }}
             >
               すべて見る
             </button>
@@ -330,7 +338,7 @@ const PortalHQ = () => {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-mikamo-blue">{issue.title}</h3>
+                        <h3 className="font-semibold" style={{ color: primaryColor }}>{issue.title}</h3>
                         <span className={`px-2 py-1 text-xs rounded-full ${
                           issue.status === 'open' ? 'bg-blue-100 text-blue-800' :
                           issue.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' :
@@ -353,7 +361,7 @@ const PortalHQ = () => {
 
         {/* 各事業部門のサマリー */}
         <div className="card">
-          <h2 className="text-xl font-bold mb-4 text-mikamo-blue">
+          <h2 className="text-xl font-bold mb-4" style={{ color: primaryColor }}>
             各事業部門のサマリー（直近14日間）
           </h2>
           {isLoading ? (
@@ -371,13 +379,13 @@ const PortalHQ = () => {
                   key={summary.business_unit_id}
                   className="bg-white p-4 rounded-lg border border-gray-200 hover:shadow-md transition-shadow"
                 >
-                  <h3 className="font-bold text-lg mb-3 text-mikamo-blue">
+                  <h3 className="font-bold text-lg mb-3" style={{ color: primaryColor }}>
                     {summary.business_unit_name}
                   </h3>
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-600">合計売上</span>
-                      <span className="font-semibold text-mikamo-blue">
+                      <span className="font-semibold" style={{ color: primaryColor }}>
                         {formatCurrency(summary.total_sales)}
                       </span>
                     </div>
@@ -402,7 +410,7 @@ const PortalHQ = () => {
 
         {/* クイックアクション */}
         <div className="card">
-          <h2 className="text-xl font-bold mb-4 text-mikamo-blue">
+          <h2 className="text-xl font-bold mb-4" style={{ color: primaryColor }}>
             クイックアクション
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -423,7 +431,7 @@ const PortalHQ = () => {
           </div>
         </div>
       </div>
-    </div>
+    </Layout>
   )
 }
 

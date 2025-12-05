@@ -5,7 +5,7 @@ AIチャットAPI（v2: ナレッジ連携・会話履歴対応）
 新しい会話履歴管理機能を追加
 """
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import Session, select
+from sqlmodel import Session, select, or_
 from typing import List, Optional
 from datetime import datetime
 from app.core.database import get_session
@@ -265,21 +265,84 @@ async def create_ai_chat_v2(
         # スタッフ・マネージャーの場合はデフォルトでスタッフQAモード
         use_staff_qa = True
     
+    # AI利用ログ用の変数
+    ai_purpose = None
+    ai_tier = None
+    ai_model = None
+    ai_tokens_input = None
+    ai_tokens_output = None
+    ai_error = None
+
     # スタッフQAモードの場合は軽量モデルを使用
     if use_staff_qa:
         from app.services.staff_qa_service import StaffQAService
-        staff_qa_service = StaffQAService()
-        answer = await staff_qa_service.answer_staff_question(
-            session=session,
-            user=current_user,
-            business_unit=business_unit,
-            user_question=chat_data.message,
-            conversation_id=conversation.id if conversation else None
-        )
+        from app.models.tenant import TenantSettings
+        try:
+            # テナント設定を取得（ティアポリシー適用用）
+            tenant_settings = None
+            if tenant_id:
+                stmt = select(TenantSettings).where(TenantSettings.tenant_id == tenant_id)
+                tenant_settings = session.exec(stmt).first()
+
+            staff_qa_service = StaffQAService(tenant_settings=tenant_settings)
+
+            # ログ用にメタデータを保存
+            ai_purpose = staff_qa_service.purpose
+            ai_tier = staff_qa_service.effective_tier
+            ai_model = staff_qa_service.model_name
+
+            answer = await staff_qa_service.answer_staff_question(
+                session=session,
+                user=current_user,
+                business_unit=business_unit,
+                user_question=chat_data.message,
+                conversation_id=conversation.id if conversation else None
+            )
+
+            # トークン使用量を取得（AnthropicClientの場合）
+            if hasattr(staff_qa_service.ai_client, 'get_last_response_metadata'):
+                metadata = staff_qa_service.ai_client.get_last_response_metadata()
+                if metadata:
+                    ai_tokens_input = metadata.tokens_input
+                    ai_tokens_output = metadata.tokens_output
+
+        except ValueError as e:
+            error_msg = str(e)
+            ai_error = error_msg[:200]  # エラーログ用
+            # エラーコード:メッセージ の形式でパース
+            if ":" in error_msg:
+                error_code, message = error_msg.split(":", 1)
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail={
+                        "error_code": error_code,
+                        "message": message
+                    }
+                )
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail={
+                        "error_code": "ai_error",
+                        "message": error_msg
+                    }
+                )
     else:
         # 通常モード（経営判断用・デフォルト）
-        ai_service = AIServiceV2()
-        
+        # テナント設定を取得（ティアポリシー適用用）
+        from app.models.tenant import TenantSettings as TS
+        tenant_settings_for_ai = None
+        if tenant_id:
+            stmt = select(TS).where(TS.tenant_id == tenant_id)
+            tenant_settings_for_ai = session.exec(stmt).first()
+
+        ai_service = AIServiceV2(tenant_settings=tenant_settings_for_ai)
+
+        # ログ用にメタデータを保存
+        ai_purpose = ai_service.purpose
+        ai_tier = ai_service.effective_tier
+        ai_model = ai_service.model_name
+
         # Departmentオブジェクトを構築（既存のAIServiceV2のインターフェースに合わせる）
         dept_obj = department
         if not dept_obj and business_unit:
@@ -290,8 +353,9 @@ async def create_ai_chat_v2(
             if not dept_obj:
                 # フォールバック: 仮のDepartmentオブジェクトを作成
                 dept_obj = Department(name=business_unit.name, code=business_unit.code)
-        
+
         answer = await ai_service.generate_answer(
+            session=session,  # SaaS対応: テナント設定取得用
             question=chat_data.message,
             user=current_user,
             department=dept_obj,
@@ -299,6 +363,30 @@ async def create_ai_chat_v2(
             summary=summary,
             today_log=today_log,
             knowledge_context=knowledge_context if knowledge_context else None
+        )
+
+        # トークン使用量を取得（AnthropicClientの場合）
+        if hasattr(ai_service.ai_client, 'get_last_response_metadata'):
+            metadata = ai_service.ai_client.get_last_response_metadata()
+            if metadata:
+                ai_tokens_input = metadata.tokens_input
+                ai_tokens_output = metadata.tokens_output
+
+    # AI利用ログを記録
+    from app.services.ai.usage_logger import log_ai_usage
+    if ai_purpose and ai_tier and ai_model:
+        log_ai_usage(
+            session=session,
+            tenant_id=tenant_id,
+            user_id=current_user.id,
+            business_unit_id=business_unit_id if business_unit else None,
+            purpose=ai_purpose,
+            tier=ai_tier,
+            model=ai_model,
+            tokens_input=ai_tokens_input,
+            tokens_output=ai_tokens_output,
+            error=ai_error,
+            conversation_id=conversation.id if conversation else None,
         )
     
     # メッセージを保存
@@ -331,7 +419,6 @@ async def create_ai_chat_v2(
     if extracted.get("issue"):
         issue_data = extracted["issue"]
         # 既に同じようなIssueが存在しないかチェック（簡易版）
-        from sqlmodel import select, or_
         existing_issue = session.exec(
             select(Issue).where(
                 Issue.business_unit_id == business_unit_id if business_unit else None,
@@ -500,6 +587,13 @@ class AIHealthResponse(BaseModel):
     model: str
     message: str
     response_time_ms: Optional[float] = None
+
+
+class AIErrorResponse(BaseModel):
+    """AIエラーレスポンス（設定不足など）"""
+    error_code: str  # "ai_not_configured", "ai_rate_limited", "ai_error"
+    message: str
+    detail: Optional[str] = None
 
 
 @router.get("/health", response_model=AIHealthResponse)

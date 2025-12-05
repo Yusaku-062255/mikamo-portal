@@ -17,8 +17,8 @@ from app.models.tenant import Tenant
 
 
 def create_demo_staff_user(
-    email: str = "staff.demo@mikamo.local",
-    password: str = "MikamoStaff-2025!",
+    email: str,
+    password: str,
     full_name: str = "Mikamo Demo Staff"
 ) -> None:
     """
@@ -95,8 +95,8 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="デモ用スタッフユーザーを作成")
-    parser.add_argument("--email", default="staff.demo@mikamo.local", help="メールアドレス")
-    parser.add_argument("--password", default="MikamoStaff-2025!", help="パスワード")
+    parser.add_argument("--email", required=True, help="メールアドレス（必須）")
+    parser.add_argument("--password", required=True, help="パスワード（必須）")
     parser.add_argument("--full-name", default="Mikamo Demo Staff", help="氏名")
 
     args = parser.parse_args()

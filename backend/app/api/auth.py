@@ -6,6 +6,7 @@ from app.core.database import get_session
 from app.core.security import verify_password, get_password_hash, create_access_token
 from app.core.config import settings
 from app.models.user import User, Department
+from app.models.business_unit import BusinessUnit
 from app.api.deps import get_current_user
 from pydantic import BaseModel, EmailStr
 from typing import Optional
@@ -28,6 +29,9 @@ class UserResponse(BaseModel):
     department_id: int
     department_name: Optional[str] = None
     department_code: Optional[str] = None
+    business_unit_id: Optional[int] = None
+    business_unit_name: Optional[str] = None
+    tenant_id: Optional[int] = None
     role: str
     is_active: bool
 
@@ -120,7 +124,12 @@ async def get_me(
     # 部門情報を取得
     statement = select(Department).where(Department.id == current_user.department_id)
     department = session.exec(statement).first()
-    
+
+    # 事業部門情報を取得
+    business_unit = None
+    if current_user.business_unit_id:
+        business_unit = session.get(BusinessUnit, current_user.business_unit_id)
+
     return UserResponse(
         id=current_user.id,
         email=current_user.email,
@@ -128,6 +137,9 @@ async def get_me(
         department_id=current_user.department_id,
         department_name=department.name if department else None,
         department_code=department.code if department else None,
+        business_unit_id=current_user.business_unit_id,
+        business_unit_name=business_unit.name if business_unit else None,
+        tenant_id=current_user.tenant_id,
         role=current_user.role,
         is_active=current_user.is_active
     )

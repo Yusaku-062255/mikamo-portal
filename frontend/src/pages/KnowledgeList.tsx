@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
+import { useTenantSettings } from '../stores/tenantStore'
 import api from '../utils/api'
+import Layout from '../components/Layout'
 
 interface KnowledgeItem {
   id: number
@@ -27,6 +29,7 @@ interface BusinessUnit {
 const KnowledgeList = () => {
   const user = useAuthStore((state) => state.user)
   const navigate = useNavigate()
+  const { primaryColor, businessUnitLabel } = useTenantSettings()
   const [items, setItems] = useState<KnowledgeItem[]>([])
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -40,6 +43,7 @@ const KnowledgeList = () => {
     { value: '', label: 'すべて' },
     { value: 'DXレポート', label: 'DXレポート' },
     { value: 'レシピ', label: 'レシピ' },
+    { value: 'menu', label: 'メニュー' },
     { value: 'マニュアル', label: 'マニュアル' },
     { value: 'お知らせ', label: 'お知らせ' },
     { value: 'FAQ', label: 'FAQ' },
@@ -57,7 +61,18 @@ const KnowledgeList = () => {
   const fetchBusinessUnits = async () => {
     try {
       const response = await api.get('/api/portal/business-units')
-      setBusinessUnits(response.data)
+      const units = response.data
+      // スタッフ/マネージャーの場合は、自分の事業部門 + 全社共通のみ表示
+      if (user?.role === 'staff' || user?.role === 'manager') {
+        const filteredUnits = units.filter(
+          (bu: BusinessUnit) =>
+            bu.id === user.business_unit_id || bu.code === 'head' || bu.code === 'hq'
+        )
+        setBusinessUnits(filteredUnits)
+      } else {
+        // head/admin は全部門を表示
+        setBusinessUnits(units)
+      }
     } catch (error) {
       console.error('事業部門取得エラー:', error)
     }
@@ -106,32 +121,31 @@ const KnowledgeList = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
-      {/* ヘッダー */}
-      <header className="bg-mikamo-blue text-white p-4 shadow-md">
+    <Layout showFab onFabClick={() => navigate('/knowledge/new')} fabLabel="+">
+      <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+        {/* ページタイトル */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold">ナレッジベース</h1>
-            <p className="text-sm opacity-90 mt-1">社内情報の管理</p>
+            <h2 className="text-2xl font-bold" style={{ color: primaryColor }}>
+              ナレッジベース
+            </h2>
+            <p className="text-sm text-gray-600 mt-1">社内情報の管理</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            {user?.role && (
+              <span className="text-xs px-2 py-1 rounded" style={{ backgroundColor: primaryColor, color: 'white' }}>
+                {user.role === 'admin' || user.role === 'head' ? '全社閲覧可' : '自部門+共通'}
+              </span>
+            )}
             <button
               onClick={() => navigate('/knowledge/new')}
-              className="text-sm px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors"
+              className="text-sm px-4 py-2 rounded-lg text-white hover:opacity-90 transition-colors"
+              style={{ backgroundColor: primaryColor }}
             >
               新規作成
             </button>
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="text-sm px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors"
-            >
-              ダッシュボードに戻る
-            </button>
           </div>
         </div>
-      </header>
-
-      <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
         {/* 検索・フィルター */}
         <div className="card">
           <div className="flex flex-col sm:flex-row gap-4">
@@ -147,23 +161,29 @@ const KnowledgeList = () => {
                 placeholder="タイトル・本文から検索"
               />
             </div>
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                事業部門で絞り込み
-              </label>
-              <select
-                value={filterBusinessUnitId}
-                onChange={(e) => setFilterBusinessUnitId(e.target.value ? Number(e.target.value) : '')}
-                className="input-field"
-              >
-                <option value="">すべて</option>
-                {businessUnits.map((bu) => (
-                  <option key={bu.id} value={bu.id}>
-                    {bu.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {/* スタッフ/マネージャーの場合は事業部門フィルターを非表示（自分の部門のみ表示されるため） */}
+            {(user?.role === 'head' || user?.role === 'admin') && (
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {businessUnitLabel}で絞り込み
+                </label>
+                <select
+                  value={filterBusinessUnitId}
+                  onChange={(e) => setFilterBusinessUnitId(e.target.value ? Number(e.target.value) : '')}
+                  className="input-field"
+                >
+                  <option value="">すべて</option>
+                  <option value="0">全社共通</option>
+                  {businessUnits
+                    .filter((bu) => bu.code !== 'head' && bu.code !== 'hq')  // 本部は除外
+                    .map((bu) => (
+                      <option key={bu.id} value={bu.id}>
+                        {bu.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            )}
             <div className="flex-1">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 カテゴリで絞り込み
@@ -214,7 +234,7 @@ const KnowledgeList = () => {
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h3 className="text-lg font-bold text-mikamo-blue mb-2">
+                      <h3 className="text-lg font-bold mb-2" style={{ color: primaryColor }}>
                         {item.title}
                       </h3>
                       <p className="text-sm text-gray-600 mb-2 line-clamp-2">
@@ -225,16 +245,23 @@ const KnowledgeList = () => {
                           <span className={`px-2 py-1 rounded-full font-medium ${
                             item.category === 'DXレポート' ? 'bg-purple-100 text-purple-800' :
                             item.category === 'レシピ' ? 'bg-orange-100 text-orange-800' :
+                            item.category === 'menu' ? 'bg-amber-100 text-amber-800' :
                             item.category === 'マニュアル' ? 'bg-blue-100 text-blue-800' :
                             item.category === 'FAQ' ? 'bg-green-100 text-green-800' :
                             'bg-gray-100 text-gray-800'
                           }`}>
-                            {item.category}
+                            {item.category === 'menu' ? 'メニュー' : item.category}
                           </span>
                         )}
-                        <span>
-                          {item.business_unit_name || '全社共通'}
-                        </span>
+                        {item.business_unit_name ? (
+                          <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
+                            {item.business_unit_name}
+                          </span>
+                        ) : (
+                          <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full">
+                            全社共通
+                          </span>
+                        )}
                         {item.tags && item.tags.length > 0 && (
                           <span>
                             タグ: {item.tags.join(', ')}
@@ -248,7 +275,8 @@ const KnowledgeList = () => {
                     <div className="flex gap-2 ml-4">
                       <button
                         onClick={() => navigate(`/knowledge/${item.id}`)}
-                        className="px-3 py-1 text-sm bg-mikamo-blue text-white rounded hover:bg-blue-700 transition-colors"
+                        className="px-3 py-1 text-sm text-white rounded hover:opacity-90 transition-colors"
+                        style={{ backgroundColor: primaryColor }}
                       >
                         編集
                       </button>
@@ -268,7 +296,7 @@ const KnowledgeList = () => {
           )}
         </div>
       </div>
-    </div>
+    </Layout>
   )
 }
 

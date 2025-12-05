@@ -41,11 +41,21 @@ export default defineConfig({
     })
   ],
   server: {
-    host: '0.0.0.0',
+    // Cloud Run 上での本番運用のため host/allowedHosts を緩めている
+    // ローカル開発の挙動には影響しない（host: true は 0.0.0.0 でリッスンすることを意味する）
+    host: true,
     port: 5173,
+    // allowedHosts: true により、Cloud Run のどのホスト名からでもアクセス可能
+    // これにより、新しいリビジョンのURLが変わってもブロックされない
+    allowedHosts: true,
     watch: {
       usePolling: true
     }
+  },
+  preview: {
+    // npm run preview 用の設定（本番ビルドのプレビュー）
+    host: true,
+    allowedHosts: true
   }
 })
 

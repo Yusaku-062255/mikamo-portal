@@ -34,9 +34,7 @@ def decode_access_token(token: str) -> Optional[dict]:
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.ALGORITHM])
         return payload
-    except JWTError as e:
-        print(f"JWT decode error: {e}")
-        print(f"Token (first 50 chars): {token[:50]}...")
-        print(f"Secret key (first 10 chars): {settings.secret_key[:10]}...")
+    except JWTError:
+        # セキュリティ上の理由から、トークンやシークレットキーの内容はログに出力しない
         return None
 

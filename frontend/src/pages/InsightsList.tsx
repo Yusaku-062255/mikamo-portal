@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
+import { useTenantSettings } from '../stores/tenantStore'
 import api from '../utils/api'
+import Layout from '../components/Layout'
 
 interface Insight {
   id: number
@@ -19,6 +21,7 @@ interface Insight {
 const InsightsList = () => {
   const user = useAuthStore((state) => state.user)
   const navigate = useNavigate()
+  const { primaryColor } = useTenantSettings()
   const [insights, setInsights] = useState<Insight[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [filterType, setFilterType] = useState<string>('')
@@ -94,10 +97,13 @@ const InsightsList = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
-      {/* ヘッダー */}
-      <header className="bg-mikamo-blue text-white p-4 shadow-md">
-        <div className="flex items-center justify-between">
+    <Layout>
+      {/* カスタムヘッダー */}
+      <div
+        className="text-white p-4 shadow-md -mx-4 -mt-4 mb-6"
+        style={{ backgroundColor: primaryColor }}
+      >
+        <div className="flex items-center justify-between max-w-4xl mx-auto">
           <div>
             <h1 className="text-xl font-bold">AI分析・提案（Insight）</h1>
             <p className="text-sm opacity-90 mt-1">現場の声から抽出された重要な気付き</p>
@@ -109,9 +115,9 @@ const InsightsList = () => {
             本部ビューに戻る
           </button>
         </div>
-      </header>
+      </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+      <div className="max-w-4xl mx-auto space-y-6">
         {/* フィルター */}
         <div className="card">
           <div className="flex flex-col sm:flex-row gap-4">
@@ -166,7 +172,7 @@ const InsightsList = () => {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <h3 className="text-lg font-bold text-mikamo-blue">
+                        <h3 className="text-lg font-bold" style={{ color: primaryColor }}>
                           {insight.title}
                         </h3>
                         <span className={`px-2 py-1 text-xs rounded-full ${getTypeColor(insight.type)}`}>
@@ -200,7 +206,7 @@ const InsightsList = () => {
           )}
         </div>
       </div>
-    </div>
+    </Layout>
   )
 }
 

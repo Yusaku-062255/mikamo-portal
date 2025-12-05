@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
+import { useTenantSettings } from '../stores/tenantStore'
 import api from '../utils/api'
+import Layout from '../components/Layout'
 
 interface BusinessUnit {
   id: number
@@ -12,6 +14,7 @@ interface BusinessUnit {
 const KnowledgeEdit = () => {
   const user = useAuthStore((state) => state.user)
   const navigate = useNavigate()
+  const { primaryColor, businessUnitLabel } = useTenantSettings()
   const { id } = useParams<{ id: string }>()
   const isNew = !id
 
@@ -33,6 +36,7 @@ const KnowledgeEdit = () => {
     { value: '', label: '未設定' },
     { value: 'DXレポート', label: 'DXレポート' },
     { value: 'レシピ', label: 'レシピ' },
+    { value: 'menu', label: 'メニュー' },
     { value: 'マニュアル', label: 'マニュアル' },
     { value: 'お知らせ', label: 'お知らせ' },
     { value: 'FAQ', label: 'FAQ' },
@@ -52,13 +56,25 @@ const KnowledgeEdit = () => {
   const fetchBusinessUnits = async () => {
     try {
       const response = await api.get('/api/portal/business-units')
-      setBusinessUnits(response.data)
-      if (response.data.length > 0 && formData.business_unit_id === 0) {
+      const units = response.data
+      // スタッフ/マネージャーの場合は、自分の事業部門 + 全社共通のみ表示
+      if (user?.role === 'staff' || user?.role === 'manager') {
+        const filteredUnits = units.filter(
+          (bu: BusinessUnit) =>
+            bu.id === user.business_unit_id || bu.code === 'head' || bu.code === 'hq'
+        )
+        setBusinessUnits(filteredUnits)
+      } else {
+        // head/admin は全部門を表示
+        setBusinessUnits(units)
+      }
+      
+      if (units.length > 0 && formData.business_unit_id === 0) {
         // ユーザーの所属部門をデフォルトに設定
-        const userUnit = response.data.find((bu: BusinessUnit) => bu.id === user?.business_unit_id)
+        const userUnit = units.find((bu: BusinessUnit) => bu.id === user?.business_unit_id)
         setFormData({
           ...formData,
-          business_unit_id: userUnit?.id || response.data[0].id
+          business_unit_id: userUnit?.id || (user?.role === 'staff' || user?.role === 'manager' ? 0 : units[0].id)  // スタッフの場合は全社共通（0）をデフォルトに
         })
       }
     } catch (error) {
@@ -126,25 +142,20 @@ const KnowledgeEdit = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
-      {/* ヘッダー */}
-      <header className="bg-mikamo-blue text-white p-4 shadow-md">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold">
-              {isNew ? 'ナレッジを新規作成' : 'ナレッジを編集'}
-            </h1>
-          </div>
+    <Layout>
+      <div className="max-w-4xl mx-auto px-4 py-6">
+        {/* ページタイトル */}
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold" style={{ color: primaryColor }}>
+            {isNew ? 'ナレッジを新規作成' : 'ナレッジを編集'}
+          </h2>
           <button
             onClick={() => navigate('/knowledge')}
-            className="text-sm px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors"
+            className="text-sm px-4 py-2 rounded-lg border hover:bg-gray-50 transition-colors"
           >
             一覧に戻る
           </button>
         </div>
-      </header>
-
-      <div className="max-w-4xl mx-auto px-4 py-6">
         <div className="card">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
@@ -162,7 +173,7 @@ const KnowledgeEdit = () => {
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 className="input-field"
-                placeholder="例: ミカモ喫茶のレシピ - コーヒーの淹れ方"
+                placeholder="例: コーヒーの淹れ方マニュアル"
                 required
               />
             </div>
@@ -185,7 +196,7 @@ const KnowledgeEdit = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                事業部門
+                {businessUnitLabel}
               </label>
               <select
                 value={formData.business_unit_id}
@@ -193,14 +204,18 @@ const KnowledgeEdit = () => {
                 className="input-field"
               >
                 <option value="0">全社共通</option>
-                {businessUnits.map((bu) => (
-                  <option key={bu.id} value={bu.id}>
-                    {bu.name}
-                  </option>
-                ))}
+                {businessUnits
+                  .filter((bu) => bu.code !== 'head' && bu.code !== 'hq')  // 本部は選択肢から除外（全社共通として扱う）
+                  .map((bu) => (
+                    <option key={bu.id} value={bu.id}>
+                      {bu.name}
+                    </option>
+                  ))}
               </select>
               <p className="text-xs text-gray-500 mt-1">
-                特定の事業部門の情報の場合は選択してください。全社共通の場合は「全社共通」を選択
+                {user?.role === 'staff' || user?.role === 'manager'
+                  ? `自分の${businessUnitLabel}または全社共通を選択できます`
+                  : `全社共通を選択すると、全ての${businessUnitLabel}から参照可能です`}
               </p>
             </div>
 
@@ -278,7 +293,7 @@ const KnowledgeEdit = () => {
           </form>
         </div>
       </div>
-    </div>
+    </Layout>
   )
 }
 

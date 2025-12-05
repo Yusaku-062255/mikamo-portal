@@ -1,12 +1,15 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from './stores/authStore'
+import { useTenantStore, useTenantSettings } from './stores/tenantStore'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import DailyLog from './pages/DailyLog'
 import AIChat from './pages/AIChat'
 import AdminUsers from './pages/AdminUsers'
+import AdminTenantSettings from './pages/AdminTenantSettings'
+import AdminAiUsage from './pages/AdminAiUsage'
 import PortalHQ from './pages/PortalHQ'
 import PortalGasStation from './pages/PortalGasStation'
 import PortalCarCoating from './pages/PortalCarCoating'
@@ -20,11 +23,29 @@ import PrivateRoute from './components/PrivateRoute'
 
 function App() {
   const fetchUser = useAuthStore((state) => state.fetchUser)
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const fetchPublicSettings = useTenantStore((state) => state.fetchPublicSettings)
+  const fetchSettings = useTenantStore((state) => state.fetchSettings)
+  const { primaryColor } = useTenantSettings()
 
   useEffect(() => {
-    // アプリ起動時にユーザー情報を取得
+    // アプリ起動時に公開テナント設定を取得（ログイン画面用）
+    fetchPublicSettings()
+    // ユーザー情報を取得
     fetchUser()
-  }, [fetchUser])
+  }, [fetchUser, fetchPublicSettings])
+
+  useEffect(() => {
+    // 認証成功後に完全なテナント設定を取得
+    if (isAuthenticated) {
+      fetchSettings()
+    }
+  }, [isAuthenticated, fetchSettings])
+
+  // CSS変数を設定（Tailwind CSS用）
+  useEffect(() => {
+    document.documentElement.style.setProperty('--color-primary', primaryColor)
+  }, [primaryColor])
 
   return (
     <ErrorBoundary>
@@ -60,6 +81,22 @@ function App() {
             element={
               <PrivateRoute>
                 <AdminUsers />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/settings"
+            element={
+              <PrivateRoute>
+                <AdminTenantSettings />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/ai-usage"
+            element={
+              <PrivateRoute>
+                <AdminAiUsage />
               </PrivateRoute>
             }
           />

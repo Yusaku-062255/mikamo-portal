@@ -178,10 +178,23 @@ def deploy_backend(project_id: str, region: str) -> str:
         '--platform', 'managed',
         '--allow-unauthenticated',
         '--port', '8080',
-        '--set-env-vars', 'BACKEND_CORS_ORIGINS=*',  # 一旦全許可、後で絞る
+        # 【セキュリティ注意】初期デプロイ時は一時的に全許可。Step 3で適切なURLに絞り込まれる
+        '--set-env-vars', 'BACKEND_CORS_ORIGINS=*',
+        # ============================================
+        # Secret Manager 経由で設定する機密情報
+        # ============================================
         '--set-secrets', 'DATABASE_URL=MIKAMO_DB_URL:latest',
         '--set-secrets', 'JWT_SECRET_KEY=MIKAMO_JWT_SECRET:latest',
+        # Anthropic (Claude) API キー（AI機能に必須）
+        '--set-secrets', 'ANTHROPIC_API_KEY=MIKAMO_ANTHROPIC_API_KEY:latest',
+        # OpenAI API キー（後方互換性、オプション）
         '--set-secrets', 'OPENAI_API_KEY=MIKAMO_OPENAI_KEY:latest',
+        # ============================================
+        # 3段階モデルティア設定（環境変数として設定）
+        # ============================================
+        '--set-env-vars', 'ANTHROPIC_MODEL_BASIC=claude-3-haiku-20240307',
+        '--set-env-vars', 'ANTHROPIC_MODEL_STANDARD=claude-3-haiku-20240307',
+        '--set-env-vars', 'ANTHROPIC_MODEL_PREMIUM=claude-3-5-sonnet-20241022',
         # 初期管理者ユーザー（オプション、Secret Managerに登録されている場合のみ）
         # '--set-secrets', 'INITIAL_ADMIN_EMAIL=MIKAMO_INITIAL_ADMIN_EMAIL:latest',
         # '--set-secrets', 'INITIAL_ADMIN_PASSWORD=MIKAMO_INITIAL_ADMIN_PASSWORD:latest',

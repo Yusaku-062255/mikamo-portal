@@ -3,38 +3,108 @@ AIサービス（v2: 抽象化レイヤー対応）
 
 既存のAIServiceを新しいAiClient抽象化レイヤーを使うようにリファクタリング
 システムプロンプトを外部ファイルから読み込む
+
+SaaS対応: テナント設定からAIプロンプトを動的に取得
 """
-import os
 from typing import Optional, List, Dict
 from pathlib import Path
+from sqlmodel import Session, select
 from app.core.config import settings
 from app.models.daily_log import DailyLog
 from app.models.user import Department, User
+from app.models.tenant import Tenant, TenantSettings
 from app.services.ai.client import AiClientFactory
 import structlog
 
 logger = structlog.get_logger()
 
 
+# デフォルトのシステムプロンプトテンプレート
+# TenantSettings.ai_company_context が設定されている場合はそちらを優先
+DEFAULT_SYSTEM_PROMPT_TEMPLATE = """あなたは{company_name}の社内アドバイザー／業務改善コンサルです。
+
+事業部門の違いを理解した上で、経営的に現実的な提案を行ってください。
+
+回答は日本語で、です・ます調でお願いします。"""
+
+
 class AIServiceV2:
-    """AI相談サービス - ミカモ専属DX参謀AI（v2: 抽象化レイヤー対応）"""
-    
-    def __init__(self):
-        # AI Client Factoryを使用してプロバイダーに応じたClientを取得
-        self.ai_client = AiClientFactory.create()
+    """AI相談サービス - DX参謀AI（v2: 抽象化レイヤー対応、マルチテナント対応）"""
+
+    def __init__(self, tenant_settings: Optional[TenantSettings] = None):
+        """
+        AIサービスを初期化
+
+        Args:
+            tenant_settings: テナント設定（ティアポリシー適用用）
+        """
+        # 用途を設定
+        self._purpose = "management_decision"
+
+        # テナントのティアポリシーを取得してAI Clientを作成
+        if tenant_settings and tenant_settings.ai_tier_policy:
+            # 経営判断用は "management_decision" 用途を使用
+            self.ai_client = AiClientFactory.create_for_purpose_with_policy(
+                self._purpose,
+                tenant_settings.ai_tier_policy
+            )
+            # effective tierを計算して保存
+            original_tier = AiClientFactory.get_tier_for_purpose(self._purpose)
+            self._effective_tier = AiClientFactory.apply_tier_policy(
+                original_tier,
+                tenant_settings.ai_tier_policy
+            ).value
+        else:
+            # デフォルト: AI Client Factoryを使用してプロバイダーに応じたClientを取得
+            self.ai_client = AiClientFactory.create()
+            self._effective_tier = AiClientFactory.get_tier_for_purpose(self._purpose).value
+
+        # モデル名を保存（ログ用）
+        self._model = getattr(self.ai_client, "model", "unknown")
+
         self.system_prompt_path = Path(__file__).parent / "ai" / "system_prompts" / "mikamo_assistant_ja.md"
         self._system_prompt_cache: Optional[str] = None
-    
+        self.tenant_settings = tenant_settings
+
+    @property
+    def purpose(self) -> str:
+        """用途を取得"""
+        return self._purpose
+
+    @property
+    def effective_tier(self) -> str:
+        """ポリシー適用後のティアを取得"""
+        return self._effective_tier
+
+    @property
+    def model_name(self) -> str:
+        """使用モデル名を取得"""
+        return self._model
+
+    def _get_tenant_settings(self, session: Session, tenant_id: int) -> Optional[TenantSettings]:
+        """
+        テナント設定を取得
+
+        Args:
+            session: データベースセッション
+            tenant_id: テナントID
+
+        Returns:
+            TenantSettingsオブジェクト（存在しない場合はNone）
+        """
+        statement = select(TenantSettings).where(TenantSettings.tenant_id == tenant_id)
+        return session.exec(statement).first()
+
     def _load_system_prompt(self) -> str:
         """
         システムプロンプトを外部ファイルから読み込む
-        
+
         Returns:
             システムプロンプト文字列
         """
         if self._system_prompt_cache:
             return self._system_prompt_cache
-        
+
         try:
             if self.system_prompt_path.exists():
                 with open(self.system_prompt_path, "r", encoding="utf-8") as f:
@@ -42,45 +112,57 @@ class AIServiceV2:
                 return self._system_prompt_cache
             else:
                 logger.warning(f"System prompt file not found: {self.system_prompt_path}")
-                return self._get_default_system_prompt()
+                return None  # テナント設定にフォールバック
         except Exception as e:
             logger.error(f"Failed to load system prompt: {e}")
-            return self._get_default_system_prompt()
-    
-    def _get_default_system_prompt(self) -> str:
-        """デフォルトのシステムプロンプト（フォールバック）"""
-        return """あなたは株式会社ミカモの社内アドバイザー／業務改善コンサルです。
+            return None  # テナント設定にフォールバック
 
-5つの事業部門（ミカモ石油、カーコーティング、中古車販売、ミカモ喫茶、本部）の違いを理解した上で、
-経営的に現実的な提案を行ってください。
+    def _get_default_system_prompt(self, company_name: str = "DXポータル") -> str:
+        """
+        デフォルトのシステムプロンプト（フォールバック）
 
-回答は日本語で、です・ます調でお願いします。"""
+        Args:
+            company_name: 会社名（テナント設定から取得）
+        """
+        return DEFAULT_SYSTEM_PROMPT_TEMPLATE.format(company_name=company_name)
     
     def _build_system_prompt_with_context(
         self,
         department_code: str,
         role: str,
-        department_name: str
+        department_name: str,
+        tenant_settings: Optional[TenantSettings] = None,
+        company_name: str = "DXポータル"
     ) -> str:
         """
-        部署・ロールに応じたSystem Promptを構築（外部ファイルベース）
-        
+        部署・ロールに応じたSystem Promptを構築（外部ファイルベース、テナント設定対応）
+
         Args:
             department_code: 部署コード
             role: ユーザーのロール
             department_name: 部署名
-        
+            tenant_settings: テナント設定（オプション）
+            company_name: 会社名（テナント設定がない場合のフォールバック）
+
         Returns:
             System Prompt文字列
         """
+        # 1. 外部ファイルからシステムプロンプトを読み込む
         base_prompt = self._load_system_prompt()
-        
+
+        # 2. 外部ファイルがない場合、テナント設定またはデフォルトを使用
+        if not base_prompt:
+            if tenant_settings and tenant_settings.ai_company_context:
+                base_prompt = tenant_settings.ai_company_context
+            else:
+                base_prompt = self._get_default_system_prompt(company_name)
+
         # 部署・ロール情報を追加
         context = f"""
 現在のユーザー: {department_name}の{role}
 事業部門コード: {department_code}
 """
-        
+
         return base_prompt + context
     
     def _build_context_from_logs(
@@ -142,6 +224,7 @@ class AIServiceV2:
     
     async def generate_answer(
         self,
+        session: Session,
         question: str,
         user: User,
         department: Department,
@@ -151,9 +234,10 @@ class AIServiceV2:
         knowledge_context: Optional[str] = None
     ) -> str:
         """
-        AI回答を生成（抽象化レイヤー経由）
-        
+        AI回答を生成（抽象化レイヤー経由、マルチテナント対応）
+
         Args:
+            session: データベースセッション
             question: ユーザーの質問
             user: ユーザー情報
             department: 部署情報
@@ -161,16 +245,35 @@ class AIServiceV2:
             summary: サマリーデータ
             today_log: 今日のDailyLog（あれば）
             knowledge_context: ナレッジベースからの関連情報（あれば）
-        
+
         Returns:
             AI回答
         """
         try:
-            # System Promptを構築
+            # テナント設定を取得（SaaS対応）
+            tenant_settings = None
+            company_name = "DXポータル"  # フォールバック
+            if user.tenant_id:
+                tenant_settings = self._get_tenant_settings(session, user.tenant_id)
+                # テナントの表示名を取得
+                tenant = session.get(Tenant, user.tenant_id)
+                if tenant:
+                    company_name = tenant.display_name
+
+            logger.debug(
+                "Building AI prompt",
+                tenant_id=user.tenant_id,
+                has_tenant_settings=tenant_settings is not None,
+                company_name=company_name
+            )
+
+            # System Promptを構築（テナント設定を反映）
             system_prompt = self._build_system_prompt_with_context(
                 department.code,
                 user.role,
-                department.name
+                department.name,
+                tenant_settings=tenant_settings,
+                company_name=company_name
             )
             
             # コンテキストを構築
@@ -242,67 +345,39 @@ class AIServiceV2:
     ) -> str:
         """
         AI APIが使えない場合のフォールバック応答
-        
+
+        SaaS対応: テナント固有の内容は含まず、汎用的な応答を返す
+
         Args:
             question: ユーザーの質問
             department_code: 部署コード
-        
+
         Returns:
             フォールバック応答
         """
-        fallback_responses = {
-            "coating": "コーティングの受注率向上のため、洗車からコーティングへの自然な流れを作ることが大切です。お客様の車の状態を見ながら、コーティングのメリットを具体的に説明してみてください。",
-            "mnet": "来店されたお客様には、まずしっかりとヒアリングを行い、お客様のニーズを把握することが成約への第一歩です。在庫の特徴を活かした提案を心がけてください。",
-            "gas": "給油のお客様には、洗車やコーティング、喫茶への自然な案内を心がけてください。声かけのタイミングが重要です。",
-            "cafe": "お客様の滞在満足度を高めながら、適切な回転率を保つことが大切です。セットメニューやデザートの提案で客単価アップを目指しましょう。",
-            "head": "部署横断でトレンドを把握し、KPIに基づいた施策を検討することが重要です。現場の声を大切にしながら、数字と肌感を結びつけましょう。",
-        }
-        
-        return fallback_responses.get(
-            department_code,
-            "ご質問ありがとうございます。現在、AIサービスが利用できない状態です。しばらくしてから再度お試しください。"
+        # 汎用的なフォールバック応答（テナント非依存）
+        return (
+            "ご質問ありがとうございます。現在、AIサービスが一時的に利用できない状態です。"
+            "しばらくしてから再度お試しいただくか、管理者にお問い合わせください。"
         )
     
     async def get_suggestions(self, department_code: str) -> List[str]:
         """
         部署に応じた質問サジェストを取得
-        
+
+        SaaS対応: 汎用的な質問サジェストを提供
+
         Args:
             department_code: 部署コード
-        
+
         Returns:
             サジェストリスト
         """
-        suggestions_map = {
-            "coating": [
-                "コーティングの受注率を上げるには？",
-                "洗車からコーティングへのアップセル方法は？",
-                "施工品質を向上させるには？",
-            ],
-            "mnet": [
-                "来店客の成約率を上げるには？",
-                "在庫回転率を改善するには？",
-                "お客様との信頼関係を築くには？",
-            ],
-            "gas": [
-                "給油客を他のサービスに誘導するには？",
-                "ピーク時間の回転率を上げるには？",
-                "固定客を増やすには？",
-            ],
-            "cafe": [
-                "客単価を上げるには？",
-                "回転率と満足度のバランスを取るには？",
-                "SNSで話題になる工夫は？",
-            ],
-            "head": [
-                "部署横断で売上を上げるには？",
-                "KPI設定のポイントは？",
-                "全社的な業務改善の進め方は？",
-            ],
-        }
-        
-        return suggestions_map.get(department_code, [
+        # 汎用的なサジェスト（テナント非依存）
+        # 将来的にはTenantSettingsで部門ごとのサジェストをカスタマイズ可能にする
+        return [
             "今日の業務で改善できる点は？",
             "売上を上げるための工夫は？",
-        ])
+            "業務効率を向上させるには？",
+        ]
 

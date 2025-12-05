@@ -32,6 +32,7 @@ class KnowledgeItem(SQLModel, table=True):
     )  # タグ（文字列配列）
     created_by: int = Field(foreign_key="users.id")
     updated_by: Optional[int] = Field(default=None, foreign_key="users.id")
+    is_active: bool = Field(default=True, index=True)  # 有効/無効フラグ（ソフトデリート用）
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     

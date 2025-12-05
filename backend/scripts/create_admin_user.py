@@ -74,15 +74,21 @@ def create_admin_user(email: str, password: str, full_name: str = "管理者") -
 
 
 if __name__ == "__main__":
-    # デフォルト値（環境変数から読み込むか、引数で指定）
+    # セキュリティ対策: デフォルトパスワードは設定しない
     import argparse
-    
+    import os
+
     parser = argparse.ArgumentParser(description="管理者ユーザーを作成")
-    parser.add_argument("--email", default="info@mikamo.tokushima.jp", help="メールアドレス")
-    parser.add_argument("--password", default="mikamo1213", help="パスワード")
+    parser.add_argument("--email", required=True, help="メールアドレス（必須）")
+    parser.add_argument("--password", default=os.environ.get("INITIAL_ADMIN_PASSWORD"), help="パスワード（環境変数 INITIAL_ADMIN_PASSWORD から取得可能）")
     parser.add_argument("--full-name", default="管理者", help="氏名")
-    
+
     args = parser.parse_args()
+
+    if not args.password:
+        print("ERROR: パスワードが指定されていません")
+        print("   --password オプションで指定するか、INITIAL_ADMIN_PASSWORD 環境変数を設定してください")
+        sys.exit(1)
     
     print("=" * 60)
     print("管理者ユーザー作成スクリプト")

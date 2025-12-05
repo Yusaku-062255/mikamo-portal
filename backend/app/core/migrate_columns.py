@@ -81,6 +81,18 @@ def add_missing_columns():
                     print("✅ source カラムを追加しました")
                 except Exception as e:
                     print(f"⚠️  source カラムの追加でエラー: {e}")
+
+            if 'is_active' not in ki_columns:
+                print("⏳ knowledge_itemsテーブルに is_active カラムを追加します...")
+                try:
+                    conn.execute(text("""
+                        ALTER TABLE knowledge_items
+                        ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE
+                    """))
+                    conn.commit()
+                    print("✅ is_active カラムを追加しました")
+                except Exception as e:
+                    print(f"⚠️  is_active カラムの追加でエラー: {e}")
         except Exception as e:
             print(f"ℹ️  knowledge_itemsテーブルがまだ存在しません: {e}")
 

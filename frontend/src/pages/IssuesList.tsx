@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
+import { useTenantSettings } from '../stores/tenantStore'
 import api from '../utils/api'
+import Layout from '../components/Layout'
 
 interface Issue {
   id: number
@@ -20,6 +22,7 @@ interface Issue {
 const IssuesList = () => {
   const user = useAuthStore((state) => state.user)
   const navigate = useNavigate()
+  const { primaryColor } = useTenantSettings()
   const { businessUnitCode } = useParams<{ businessUnitCode?: string }>()
   const [issues, setIssues] = useState<Issue[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -107,10 +110,13 @@ const IssuesList = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
-      {/* ヘッダー */}
-      <header className="bg-mikamo-blue text-white p-4 shadow-md">
-        <div className="flex items-center justify-between">
+    <Layout>
+      {/* カスタムヘッダー */}
+      <div
+        className="text-white p-4 shadow-md -mx-4 -mt-4 mb-6"
+        style={{ backgroundColor: primaryColor }}
+      >
+        <div className="flex items-center justify-between max-w-4xl mx-auto">
           <div>
             <h1 className="text-xl font-bold">課題・困りごと一覧</h1>
             <p className="text-sm opacity-90 mt-1">
@@ -124,9 +130,9 @@ const IssuesList = () => {
             ダッシュボードに戻る
           </button>
         </div>
-      </header>
+      </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+      <div className="max-w-4xl mx-auto space-y-6">
         {/* フィルター */}
         <div className="card">
           <div className="flex flex-col sm:flex-row gap-4">
@@ -188,7 +194,7 @@ const IssuesList = () => {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <h3 className="text-lg font-bold text-mikamo-blue">
+                        <h3 className="text-lg font-bold" style={{ color: primaryColor }}>
                           {issue.title}
                         </h3>
                         <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(issue.status)}`}>
@@ -214,7 +220,8 @@ const IssuesList = () => {
                         {issue.conversation_id && (
                           <button
                             onClick={() => navigate(`/ai?conversation=${issue.conversation_id}`)}
-                            className="text-mikamo-blue hover:underline"
+                            className="hover:underline"
+                            style={{ color: primaryColor }}
                           >
                             関連会話を見る
                           </button>
@@ -228,7 +235,7 @@ const IssuesList = () => {
           )}
         </div>
       </div>
-    </div>
+    </Layout>
   )
 }
 

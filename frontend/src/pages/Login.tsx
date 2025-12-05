@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
+import { useTenantSettings } from '../stores/tenantStore'
 
 const Login = () => {
+  const { displayName, primaryColor } = useTenantSettings()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -29,7 +31,7 @@ const Login = () => {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-mikamo-blue mb-2">みかもポータル</h1>
+          <h1 className="text-3xl font-bold mb-2" style={{ color: primaryColor }}>{displayName}</h1>
           <p className="text-gray-600">ログインしてください</p>
         </div>
 
@@ -50,7 +52,7 @@ const Login = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="input-field"
-              placeholder="example@mikamo.co.jp"
+              placeholder="example@example.com"
               required
               autoComplete="email"
             />

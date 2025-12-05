@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
+import { useTenantSettings } from '../stores/tenantStore'
 import api from '../utils/api'
+import Layout from '../components/Layout'
 
 interface Conversation {
   id: number
@@ -29,6 +31,7 @@ interface BusinessUnit {
 const AIChat = () => {
   const user = useAuthStore((state) => state.user)
   const navigate = useNavigate()
+  const { primaryColor, displayName, businessUnitLabel, settings } = useTenantSettings()
   const [message, setMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [conversations, setConversations] = useState<Conversation[]>([])
@@ -147,34 +150,63 @@ const AIChat = () => {
     setCurrentConversationId(conversationId)
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50 pb-24">
-      {/* ヘッダー */}
-      <header className="bg-mikamo-blue text-white p-4 shadow-md">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold">AI相談 🤖</h1>
-            <p className="text-sm opacity-90 mt-1">ミカモ専属AIアシスタント</p>
-          </div>
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="text-sm px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors"
-          >
-            ダッシュボードに戻る
-          </button>
-        </div>
-      </header>
+  // AIプランバッジの設定
+  const getAiPlanBadge = () => {
+    const policy = settings?.ai_tier_policy || 'all'
+    const badges: Record<string, { label: string; color: string; description: string }> = {
+      all: {
+        label: 'プレミアム',
+        color: '#8B5CF6', // purple
+        description: '全ティア利用可能'
+      },
+      standard_max: {
+        label: 'スタンダード',
+        color: '#3B82F6', // blue
+        description: 'STANDARD以下'
+      },
+      basic_only: {
+        label: 'ライト',
+        color: '#22C55E', // green
+        description: 'BASICのみ'
+      }
+    }
+    return badges[policy] || badges.all
+  }
 
+  const aiPlanBadge = getAiPlanBadge()
+
+  return (
+    <Layout>
       <div className="max-w-6xl mx-auto px-4 py-6">
+        {/* ページタイトル */}
+        <div className="mb-6">
+          <div className="flex items-center gap-3 mb-1">
+            <h2 className="text-2xl font-bold" style={{ color: primaryColor }}>
+              AI相談
+            </h2>
+            {/* AIプランバッジ */}
+            <span
+              className="px-2 py-1 text-xs font-medium text-white rounded-full"
+              style={{ backgroundColor: aiPlanBadge.color }}
+              title={aiPlanBadge.description}
+            >
+              {aiPlanBadge.label}プラン
+            </span>
+          </div>
+          <p className="text-sm text-gray-600">
+            {displayName}専属AIアシスタント
+          </p>
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* サイドバー: 会話一覧 */}
           <div className="lg:col-span-1">
             <div className="card">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-mikamo-blue">会話履歴</h2>
+                <h2 className="text-lg font-bold" style={{ color: primaryColor }}>会話履歴</h2>
                 <button
                   onClick={handleNewConversation}
-                  className="text-sm px-3 py-1 bg-mikamo-blue text-white rounded hover:bg-blue-700 transition-colors"
+                  className="text-sm px-3 py-1 text-white rounded hover:opacity-90 transition-colors"
+                  style={{ backgroundColor: primaryColor }}
                 >
                   新規
                 </button>
@@ -183,7 +215,7 @@ const AIChat = () => {
               {/* 事業部門選択 */}
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  事業部門
+                  {businessUnitLabel}
                 </label>
                 <select
                   value={selectedBusinessUnitId || ''}
@@ -211,11 +243,12 @@ const AIChat = () => {
                     <button
                       key={conv.id}
                       onClick={() => handleSelectConversation(conv.id)}
-                      className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                        currentConversationId === conv.id
-                          ? 'bg-mikamo-blue text-white border-mikamo-blue'
-                          : 'bg-gray-50 hover:bg-gray-100 border-gray-200'
-                      }`}
+                      className="w-full text-left p-3 rounded-lg border transition-colors"
+                      style={{
+                        backgroundColor: currentConversationId === conv.id ? primaryColor : '#f9fafb',
+                        color: currentConversationId === conv.id ? 'white' : 'inherit',
+                        borderColor: currentConversationId === conv.id ? primaryColor : '#e5e7eb'
+                      }}
                     >
                       <div className="font-semibold text-sm mb-1">
                         {conv.title || '（タイトルなし）'}
@@ -249,11 +282,11 @@ const AIChat = () => {
                       className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
                       <div
-                        className={`max-w-[80%] rounded-lg p-4 ${
-                          msg.role === 'user'
-                            ? 'bg-mikamo-blue text-white'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}
+                        className="max-w-[80%] rounded-lg p-4"
+                        style={{
+                          backgroundColor: msg.role === 'user' ? primaryColor : '#f3f4f6',
+                          color: msg.role === 'user' ? 'white' : '#1f2937'
+                        }}
                       >
                         <div className="whitespace-pre-wrap">{msg.content}</div>
                         <div className={`text-xs mt-2 ${msg.role === 'user' ? 'text-white/70' : 'text-gray-500'}`}>
@@ -315,7 +348,7 @@ const AIChat = () => {
           </div>
         </div>
       </div>
-    </div>
+    </Layout>
   )
 }
 

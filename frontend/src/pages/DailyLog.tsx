@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useTenantSettings } from '../stores/tenantStore'
 import api from '../utils/api'
 import { format } from 'date-fns'
+import Layout from '../components/Layout'
 
 type WeatherType = 'sunny' | 'cloudy' | 'rainy' | 'snow' | null
 
@@ -19,6 +21,7 @@ interface DailyLogData {
 
 const DailyLog = () => {
   const navigate = useNavigate()
+  const { primaryColor } = useTenantSettings()
   const [formData, setFormData] = useState<DailyLogData>({
     date: format(new Date(), 'yyyy-MM-dd'),
     weather: null,
@@ -68,14 +71,14 @@ const DailyLog = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
-      {/* ヘッダー */}
-      <header className="bg-mikamo-blue text-white p-4 shadow-md">
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="text-lg"
-          >
+    <Layout showHeader={false}>
+      {/* カスタムヘッダー（シンプル版） */}
+      <header
+        className="text-white p-4 shadow-md"
+        style={{ backgroundColor: primaryColor }}
+      >
+        <div className="flex items-center justify-between max-w-2xl mx-auto">
+          <button onClick={() => navigate('/dashboard')} className="text-lg">
             ← 戻る
           </button>
           <h1 className="text-xl font-bold">今日の振り返り</h1>
@@ -83,7 +86,7 @@ const DailyLog = () => {
         </div>
       </header>
 
-      <form onSubmit={handleSubmit} className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+      <form onSubmit={handleSubmit} className="max-w-2xl mx-auto px-4 py-6 space-y-6 pb-24">
         {/* 日付 */}
         <div className="card">
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -109,11 +112,11 @@ const DailyLog = () => {
                 key={option.value}
                 type="button"
                 onClick={() => setFormData({ ...formData, weather: option.value as WeatherType })}
-                className={`p-4 rounded-lg border-2 transition-all ${
-                  formData.weather === option.value
-                    ? 'border-mikamo-blue bg-blue-50'
-                    : 'border-gray-200 bg-white'
-                }`}
+                className="p-4 rounded-lg border-2 transition-all"
+                style={{
+                  borderColor: formData.weather === option.value ? primaryColor : '#e5e7eb',
+                  backgroundColor: formData.weather === option.value ? '#eff6ff' : 'white'
+                }}
               >
                 <div className="text-3xl mb-2">{option.emoji}</div>
                 <div className="text-sm font-medium">{option.label}</div>
@@ -290,7 +293,7 @@ const DailyLog = () => {
               >
                 🎉
               </motion.div>
-              <h2 className="text-2xl font-bold text-mikamo-blue mb-2">
+              <h2 className="text-2xl font-bold mb-2" style={{ color: primaryColor }}>
                 お疲れ様でした！
               </h2>
               <p className="text-gray-600 mb-4">
@@ -312,7 +315,7 @@ const DailyLog = () => {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </Layout>
   )
 }
 

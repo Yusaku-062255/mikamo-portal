@@ -14,18 +14,10 @@ interface DepartmentsComparisonChartProps {
   data: DepartmentData[]
 }
 
-const departmentNameMap: Record<string, string> = {
-  coating: 'SOUP',
-  mnet: 'M-NET',
-  gas: 'ミカモ石油',
-  cafe: 'ミカモ喫茶',
-  head: '本部',
-}
-
 export const DepartmentsComparisonChart = ({ data }: DepartmentsComparisonChartProps) => {
-  // データを整形
+  // データを整形（APIから取得したdepartment_nameをそのまま使用）
   const chartData = data.map((item) => ({
-    name: departmentNameMap[item.department_code] || item.department_name,
+    name: item.department_name,
     sales: item.sales,
     customers: item.customers,
     transactions: item.transactions,

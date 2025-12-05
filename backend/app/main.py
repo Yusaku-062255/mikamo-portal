@@ -2,6 +2,8 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
 from sqlmodel import SQLModel
 from app.core.config import settings
 from app.core.database import engine
@@ -12,18 +14,38 @@ from app.core.middleware import (
     http_exception_handler,
     validation_exception_handler
 )
-from app.api import auth, daily_logs, tasks, ai_chat, admin, knowledge, portal, issues, insights, decisions
+from app.api import auth, daily_logs, tasks, ai_chat, admin, knowledge, portal, issues, insights, decisions, tenant, ai_usage
 from app.core.init_db import init_database
 from app.core.migrate_columns import run_migrations
 
 # ロギングを初期化
 setup_logging()
 
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """セキュリティヘッダーを追加するミドルウェア"""
+
+    async def dispatch(self, request: Request, call_next):
+        response: Response = await call_next(request)
+        # セキュリティヘッダーを追加
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        # HSTS (本番環境ではHTTPS必須)
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        return response
+
+
 app = FastAPI(
-    title="みかもポータル API",
-    description="株式会社ミカモのポータルシステム API",
-    version="0.2.0"
+    title="DX Portal API",
+    description="Multi-tenant DX Portal System API",
+    version="0.3.0"
 )
+
+# セキュリティヘッダーミドルウェア
+app.add_middleware(SecurityHeadersMiddleware)
 
 # ミドルウェア（リクエストID生成）
 app.middleware("http")(add_request_id)
@@ -53,6 +75,8 @@ app.include_router(issues.router, prefix="/api/issues", tags=["Issue"])
 app.include_router(insights.router, prefix="/api/insights", tags=["Insight"])
 app.include_router(decisions.router, prefix="/api/decisions", tags=["Decision"])
 app.include_router(knowledge.router, prefix="/api/knowledge", tags=["ナレッジベース"])
+app.include_router(tenant.router, tags=["テナント設定"])
+app.include_router(ai_usage.router, prefix="/api/admin/ai-usage", tags=["AI利用状況"])
 
 
 @app.on_event("startup")
@@ -81,9 +105,10 @@ async def on_startup():
         # 2. 欠けているカラムを追加（既存テーブルへのマイグレーション）
         run_migrations()
 
-        # 3. 部門と初期管理者ユーザーを自動作成
+        # 3. テナント、部門、初期管理者ユーザーを自動作成
         # init_database() 内で以下を実行:
-        # - 5つの事業部門（ミカモ喫茶、カーコーティング、中古車販売、ミカモ石油、経営本陣）を作成
+        # - デフォルトテナントの作成
+        # - 事業部門の作成（テナント設定に基づく）
         # - 環境変数から初期管理者ユーザーを作成（INITIAL_ADMIN_EMAIL 等が設定されている場合）
         init_database()
         
@@ -95,7 +120,7 @@ async def on_startup():
 
 @app.get("/")
 async def root():
-    return {"message": "みかもポータル API v0.2"}
+    return {"message": "DX Portal API v0.3"}
 
 
 @app.get("/health")

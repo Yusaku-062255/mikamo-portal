@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
+import { useTenantSettings } from '../stores/tenantStore'
 import api from '../utils/api'
+import Layout from '../components/Layout'
 
 interface User {
   id: number
@@ -32,6 +34,7 @@ interface UserFormData {
 const AdminUsers = () => {
   const user = useAuthStore((state) => state.user)
   const navigate = useNavigate()
+  const { primaryColor, businessUnitLabel } = useTenantSettings()
   const [users, setUsers] = useState<User[]>([])
   const [departments, setDepartments] = useState<Department[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -146,7 +149,7 @@ const AdminUsers = () => {
     const roleNames: Record<string, string> = {
       staff: 'スタッフ',
       manager: 'マネージャー',
-      head: '経営本陣',
+      head: '本部',
       admin: '管理者'
     }
     return roleNames[role] || role
@@ -157,24 +160,31 @@ const AdminUsers = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
-      {/* ヘッダー */}
-      <header className="bg-mikamo-blue text-white p-4 shadow-md">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold">ユーザー管理</h1>
-            <p className="text-sm opacity-90 mt-1">管理者専用画面</p>
-          </div>
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="text-sm px-4 py-2 bg-white/20 rounded-lg hover:bg-white/30 transition-colors"
-          >
-            ダッシュボードに戻る
-          </button>
-        </div>
-      </header>
-
+    <Layout>
       <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+        {/* ページタイトルと管理メニュー */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold" style={{ color: primaryColor }}>
+              ユーザー管理
+            </h2>
+            <p className="text-sm text-gray-600 mt-1">管理者専用画面</p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => navigate('/admin/ai-usage')}
+              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+            >
+              AI利用状況
+            </button>
+            <button
+              onClick={() => navigate('/admin/settings')}
+              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+            >
+              テナント設定
+            </button>
+          </div>
+        </div>
         {/* 成功メッセージ */}
         {successMessage && (
           <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
@@ -195,7 +205,7 @@ const AdminUsers = () => {
             <div className="flex flex-col sm:flex-row gap-4 flex-1">
               <div className="flex-1">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  部門で絞り込み
+                  {businessUnitLabel}で絞り込み
                 </label>
                 <select
                   value={filterDepartmentId}
@@ -222,7 +232,7 @@ const AdminUsers = () => {
                   <option value="">すべて</option>
                   <option value="staff">スタッフ</option>
                   <option value="manager">マネージャー</option>
-                  <option value="head">経営本陣</option>
+                  <option value="head">本部</option>
                   <option value="admin">管理者</option>
                 </select>
               </div>
@@ -252,7 +262,7 @@ const AdminUsers = () => {
                 <tr className="border-b">
                   <th className="text-left p-3 font-medium text-gray-700">氏名</th>
                   <th className="text-left p-3 font-medium text-gray-700">メールアドレス</th>
-                  <th className="text-left p-3 font-medium text-gray-700">部門</th>
+                  <th className="text-left p-3 font-medium text-gray-700">{businessUnitLabel}</th>
                   <th className="text-left p-3 font-medium text-gray-700">ロール</th>
                   <th className="text-left p-3 font-medium text-gray-700">ステータス</th>
                 </tr>
@@ -291,7 +301,7 @@ const AdminUsers = () => {
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold mb-4 text-mikamo-blue">新しいユーザーを追加</h2>
+            <h2 className="text-xl font-bold mb-4" style={{ color: primaryColor }}>新しいユーザーを追加</h2>
             
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -317,14 +327,14 @@ const AdminUsers = () => {
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   className="input-field"
-                  placeholder="example@mikamo.co.jp"
+                  placeholder="example@example.com"
                   required
                 />
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  部門 <span className="text-red-500">*</span>
+                  {businessUnitLabel} <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={formData.department_id}
@@ -353,7 +363,7 @@ const AdminUsers = () => {
                 >
                   <option value="staff">スタッフ</option>
                   <option value="manager">マネージャー</option>
-                  <option value="head">経営本陣</option>
+                  <option value="head">本部</option>
                   <option value="admin">管理者</option>
                 </select>
               </div>
@@ -421,7 +431,7 @@ const AdminUsers = () => {
           </div>
         </div>
       )}
-    </div>
+    </Layout>
   )
 }
 

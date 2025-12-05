@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+/* テナントカラー変数（JS側で動的に上書き可能） */
+:root {
+  --color-primary: #1e40af;
+  --color-primary-hover: #1d4ed8;
+}
+
 /* モバイルファースト: タッチターゲットは最低48px */
 @layer base {
   body {
